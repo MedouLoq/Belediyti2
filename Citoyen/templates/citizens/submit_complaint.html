@@ -1,0 +1,127 @@
+{% extends 'base.html' %}
+
+{% block title %}Soumettre une Nouvelle Réclamation{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div data-aos="fade-down" data-aos-duration="800">
+        <a href="{% url 'complaint_list' %}" class="inline-flex items-center text-sm font-medium text-gray-500 hover:text-gray-700 mb-4 transition-all duration-300 hover:translate-x-[-5px]">
+            <svg class="hero-icon mr-1.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+            </svg>
+            Retour à la liste
+        </a>
+        <h1 class="text-3xl font-bold text-gray-800 relative">
+            Soumettre une Nouvelle Réclamation
+            <span class="absolute bottom-0 left-0 w-20 h-1 bg-gradient-to-r from-blue-600 to-purple-600 rounded"></span>
+        </h1>
+        <p class="mt-3 text-lg text-gray-600">Partagez-nous vos préoccupations, nous sommes à votre écoute.</p>
+    </div>
+
+    <div class="card max-w-2xl mx-auto backdrop-blur-sm shadow-xl" data-aos="fade-up" data-aos-delay="200">
+         <form method="post" class="space-y-6 card-body" enctype="multipart/form-data">
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+                <div class="alert alert-error" role="alert">
+                    {% for error in form.non_field_errors %}
+                        <span class="flex items-center">
+                            <svg class="w-5 h-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.008v.008H12v-.008Z" />
+                            </svg>
+                            {{ error }}
+                        </span>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            <!-- Subject field -->
+            <div class="relative group">
+                <label for="{{ form.subject.id_for_label }}" class="form-label group-focus-within:text-blue-600 transition-colors duration-200">
+                    {{ form.subject.label }} {% if form.subject.field.required %}<span class="text-red-500">*</span>{% endif %}
+                </label>
+                {{ form.subject }}
+                {% if form.subject.errors %}
+                <p class="text-red-500 text-xs italic mt-1 flex items-center">
+                    <svg class="w-4 h-4 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9.344-3.375c-.103.224-.274.397-.499.5h-.002a.75.75 0 0 1-.622-.193A3.738 3.738 0 0 0 9 11.25a3.738 3.738 0 0 0 1.077 2.622c.199.199.29.478.193.622-.95.17-.268.28-.499.279h-.003c-.19-.001-.371-.077-.5-.193-1.045-1.021-1.63-2.436-1.618-3.906.008-1.471.611-2.882 1.666-3.89.197-.187.45-.292.713-.293.269 0 .513.101.7.28l4.266 4.267c.2.199.48.289.624.191.143-.098.254-.263.278-.426.118-.836-.006-1.695-.36-2.442" />
+                    </svg>
+                    {{ form.subject.errors.as_text }}
+                </p>
+                {% endif %}
+            </div>
+
+            <!-- Description field -->
+            <div class="relative group">
+                <label for="{{ form.description.id_for_label }}" class="form-label group-focus-within:text-blue-600 transition-colors duration-200">
+                    {{ form.description.label }} {% if form.description.field.required %}<span class="text-red-500">*</span>{% endif %}
+                </label>
+                {{ form.description }}
+                {% if form.description.errors %}
+                <p class="text-red-500 text-xs italic mt-1 flex items-center">
+                    <svg class="w-4 h-4 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9.344-3.375c-.103.224-.274.397-.499.5h-.002a.75.75 0 0 1-.622-.193A3.738 3.738 0 0 0 9 11.25a3.738 3.738 0 0 0 1.077 2.622c.199.199.29.478.193.622-.95.17-.268.28-.499.279h-.003c-.19-.001-.371-.077-.5-.193-1.045-1.021-1.63-2.436-1.618-3.906.008-1.471.611-2.882 1.666-3.89.197-.187.45-.292.713-.293.269 0 .513.101.7.28l4.266 4.267c.2.199.48.289.624.191.143-.098.254-.263.278-.426.118-.836-.006-1.695-.36-2.442" />
+                    </svg>
+                    {{ form.description.errors.as_text }}
+                </p>
+                {% endif %}
+            </div>
+
+            <!-- Evidence field -->
+            <div class="relative group">
+                <label for="{{ form.evidence.id_for_label }}" class="form-label group-focus-within:text-blue-600 transition-colors duration-200">
+                    {{ form.evidence.label }} {% if form.evidence.field.required %}<span class="text-red-500">*</span>{% endif %}
+                </label>
+                {{ form.evidence }}
+                {% if form.evidence.errors %}
+                <p class="text-red-500 text-xs italic mt-1 flex items-center">
+                    <svg class="w-4 h-4 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9.344-3.375c-.103.224-.274.397-.499.5h-.002a.75.75 0 0 1-.622-.193A3.738 3.738 0 0 0 9 11.25a3.738 3.738 0 0 0 1.077 2.622c.199.199.29.478.193.622-.95.17-.268.28-.499.279h-.003c-.19-.001-.371-.077-.5-.193-1.045-1.021-1.63-2.436-1.618-3.906.008-1.471.611-2.882 1.666-3.89.197-.187.45-.292.713-.293.269 0 .513.101.7.28l4.266 4.267c.2.199.48.289.624.191.143-.098.254-.263.278-.426.118-.836-.006-1.695-.36-2.442" />
+                    </svg>
+                    {{ form.evidence.errors.as_text }}
+                </p>
+                {% endif %}
+            </div>
+            
+            <!-- Municipality select field -->
+            <div class="relative group">
+                <label for="{{ form.municipality.id_for_label }}" class="form-label group-focus-within:text-blue-600 transition-colors duration-200">
+                    {{ form.municipality.label }} {% if form.municipality.field.required %}<span class="text-red-500">*</span>{% endif %}
+                </label>
+                {{ form.municipality }}
+                {% if form.municipality.errors %}
+                <p class="text-red-500 text-xs italic mt-1 flex items-center">
+                    {{ form.municipality.errors.as_text }}
+                </p>
+                {% endif %}
+            </div>
+            
+            <div class="pt-5 border-t border-gray-200">
+                <button type="submit" class="btn btn-secondary w-full sm:w-auto justify-center group">
+                   <svg class="hero-icon mr-2 transform group-hover:rotate-12 transition-transform duration-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5" />
+                   </svg>
+                    Soumettre la Réclamation
+                </button>
+            </div>
+         </form>
+         <div class="card-footer bg-gradient-to-r from-blue-50 to-purple-50 text-center">
+            <p class="text-sm text-gray-600">Votre réclamation sera traitée dans les plus brefs délais</p>
+         </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Adding a small animation on focus for inputs and textareas.
+    document.querySelectorAll('input, textarea').forEach(el => {
+        el.addEventListener('focus', () => {
+            el.style.transform = 'scale(1.01)';
+        });
+        el.addEventListener('blur', () => {
+            el.style.transform = 'scale(1)';
+        });
+    });
+</script>
+{% endblock %}

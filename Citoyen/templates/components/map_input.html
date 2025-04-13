@@ -1,0 +1,22 @@
+
+<div>
+    <h3 class="text-lg font-medium text-gray-800 mb-2">Localisation du Problème</h3>
+    <p class="text-sm text-gray-500 mb-4">Déplacez le marqueur sur la carte ou utilisez votre position actuelle. L'adresse sera mise à jour automatiquement.</p>
+    <!-- Map Container -->
+    <div id="map-input"></div>
+</div>
+
+<div>
+   <label for="{{ form.location.id_for_label }}" class="form-label">{{ form.location.label }} {% if form.location.field.required %}<span class="text-red-500">*</span>{% endif %}</label>
+   {{ form.location }} {# Address field #}
+   {% if form.location.errors %}<p class="text-red-500 text-xs italic mt-1">{{ form.location.errors.as_text }}</p>{% endif %}
+</div>
+
+<!-- Hidden Latitude/Longitude Fields -->
+{{ form.latitude }}
+{{ form.longitude }}
+{% if form.latitude.errors or form.longitude.errors %}
+    <p class="text-red-500 text-xs italic mt-1">Veuillez sélectionner une localisation sur la carte.</p>
+{% endif %}
+
+

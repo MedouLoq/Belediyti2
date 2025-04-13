@@ -1,0 +1,141 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Détail Problème #{{ problem.id|stringformat:".8s" }}{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Back Link & Title -->
+    <div data-aos="fade-down">
+        <a href="{% url 'problem_list' %}" class="inline-flex items-center text-sm font-medium text-gray-500 hover:text-gray-700 mb-4">
+             <svg class="hero-icon mr-1.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" /></svg>
+            Retour à la liste
+        </a>
+        <h1 class="text-3xl font-bold text-gray-800">Problème #{{ problem.id|stringformat:".8s" }}...</h1>
+        <p class="mt-1 text-lg text-gray-600">{{ problem.category.name }}</p>
+    </div>
+
+    <!-- Problem Details Card -->
+    <div class="card" data-aos="fade-up" data-aos-delay="100">
+        <div class="card-body space-y-5">
+            <div class="flex flex-col sm:flex-row justify-between sm:items-center border-b pb-4 border-gray-200">
+                <h2 class="text-xl font-semibold text-gray-700">Détails du Signalement</h2>
+                {% include 'components/status_badge.html' with status=problem.status %}
+            </div>
+
+            <dl class="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2">
+                <div class="sm:col-span-1">
+                    <dt class="text-sm font-medium text-gray-500">Catégorie</dt>
+                    <dd class="mt-1 text-sm text-gray-900">{{ problem.category.name }}</dd>
+                </div>
+                 <div class="sm:col-span-1">
+                    <dt class="text-sm font-medium text-gray-500">Signalé le</dt>
+                    <dd class="mt-1 text-sm text-gray-900">{{ problem.created_at|date:"d/m/Y H:i" }} ({{ problem.created_at|naturaltime }})</dd>
+                </div>
+                 <div class="sm:col-span-1">
+                    <dt class="text-sm font-medium text-gray-500">Adresse / Lieu</dt>
+                    <dd class="mt-1 text-sm text-gray-900">{{ problem.location|default:"Non spécifié" }}</dd>
+                </div>
+                 <div class="sm:col-span-1">
+                    <dt class="text-sm font-medium text-gray-500">Municipalité</dt>
+                    <dd class="mt-1 text-sm text-gray-900">{{ problem.municipality.name }}</dd>
+                </div>
+                 <div class="sm:col-span-2">
+                    <dt class="text-sm font-medium text-gray-500">Description</dt>
+                    <dd class="mt-1 text-sm text-gray-900 whitespace-pre-wrap">{{ problem.description }}</dd>
+                </div>
+
+                 {% if problem.photo %}
+                 <div class="sm:col-span-2">
+                    <dt class="text-sm font-medium text-gray-500 mb-2">Photo</dt>
+                    <dd class="mt-1">
+                         <a href="{{ problem.photo.url }}" target="_blank" title="Voir l'image en taille réelle">
+                             <img src="{{ problem.photo.url }}" alt="Photo du problème {{ problem.category.name }}" class="rounded-lg shadow-md max-w-xs sm:max-w-sm lg:max-w-md h-auto border border-gray-200 hover:opacity-90 transition-opacity">
+                         </a>
+                    </dd>
+                </div>
+                {% endif %}
+
+                <div class="sm:col-span-2">
+                    <dt class="text-sm font-medium text-gray-500 mb-2">Localisation</dt>
+                    <dd class="mt-1">
+                        <p class="text-sm text-gray-700">Lat: {{ problem.latitude }}, Lng: {{ problem.longitude }}</p>
+                        <!-- Simple Map Display (Optional - Requires Leaflet or Google Maps JS) -->
+                         <div id="map-display" style="height: 250px; width: 100%;" class="mt-2 rounded-lg border border-gray-300"></div>
+                    </dd>
+                </div>
+
+            </dl>
+        </div>
+        <div class="card-footer text-sm text-gray-500">
+            Dernière mise à jour: {{ problem.updated_at|naturaltime }}
+        </div>
+    </div>
+
+    <!-- Status History (Optional - Requires context variable 'status_logs') -->
+    {% if status_logs %}
+        <div class="card" data-aos="fade-up" data-aos-delay="200">
+             <div class="card-header">
+                <h2 class="text-xl font-semibold text-gray-700">Historique du Statut</h2>
+            </div>
+            <div class="card-body">
+                <ul role="list" class="space-y-4">
+                    {% for log in status_logs %}
+                    <li class="flex items-start gap-x-3">
+                         <div class="mt-1 h-5 w-5 flex-none rounded-full bg-gray-100 ring-1 ring-gray-200 flex items-center justify-center">
+                             <svg class="h-3 w-3 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-13a.75.75 0 00-1.5 0v5c0 .414.336.75.75.75h4a.75.75 0 000-1.5h-3.25V5z" clip-rule="evenodd" /></svg>
+                         </div>
+                        <div class="flex-auto text-sm leading-6">
+                            <p class="font-medium text-gray-900">Statut changé de <span class="font-semibold">{{ log.old_status|default:"N/A" }}</span> à <span class="font-semibold">{{ log.new_status }}</span></p>
+                            <p class="text-gray-500">Par {{ log.changed_by.username }} le {{ log.changed_at|date:"d/m/Y H:i" }}</p>
+                        </div>
+                    </li>
+                    {% empty %}
+                     <li class="text-sm text-gray-500">Aucun historique de statut disponible.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    {% endif %}
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{# Include Leaflet CSS and JS if you want to display the map #}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const lat = {{ problem.latitude|default:0 }}; // Default to 0 if null
+        const lng = {{ problem.longitude|default:0 }}; // Default to 0 if null
+        const mapElement = document.getElementById('map-display');
+
+        if (mapElement && lat !== 0 && lng !== 0) { // Check if coords are valid
+            const map = L.map(mapElement).setView([lat, lng], 15); // Adjust zoom level
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
+
+            L.marker([lat, lng]).addTo(map)
+                .bindPopup('Localisation du problème signalée.')
+                .openPopup();
+                
+            // Disable map interactions
+            map.dragging.disable();
+            map.touchZoom.disable();
+            map.doubleClickZoom.disable();
+            map.scrollWheelZoom.disable();
+            map.boxZoom.disable();
+            map.keyboard.disable();
+            if (map.tap) map.tap.disable();
+            mapElement.style.cursor = 'default';
+        } else if (mapElement) {
+            mapElement.innerHTML = '<p class="text-center text-gray-500 p-4">Localisation non disponible sur la carte.</p>';
+            mapElement.style.height = 'auto';
+        }
+    });
+</script>
+{% endblock %}

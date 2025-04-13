@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Belediyti - Participation Citoyenne{% endblock %}</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+    <!-- AOS - Animation On Scroll -->
+    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+
+    <!-- Google Fonts (Example: Poppins) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    {# REMOVED Heroicons script - Add it back ONLY if you are NOT using inline SVGs #}
+    {# <script type="module" src="https://cdn.jsdelivr.net/npm/heroicons@2.1.1/24/outline/index.min.js"></script> #}
+    {# <script type="module" src="https://cdn.jsdelivr.net/npm/heroicons@2.1.1/24/solid/index.min.js"></script> #}
+
+    <!-- Custom Styles -->
+    <style>
+       /* Variables CSS améliorées */
+:root {
+  --primary: #4f46e5;
+  --primary-hover: #4338ca;
+  --secondary: #10b981;
+  --secondary-hover: #059669;
+  --danger: #ef4444;
+  --warning: #f59e0b;
+  --info: #3b82f6;
+  --success: #22c55e;
+  --background: #f9fafb;
+  --card-bg: white;
+  --text-dark: #1f2937;
+  --text-light: #6b7280;
+  --border-color: #e5e7eb;
+  --gradient-primary: linear-gradient(135deg, #4f46e5 0%, #8b5cf6 100%);
+  --gradient-secondary: linear-gradient(135deg, #10b981 0%, #3b82f6 100%);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --transition: all 0.3s ease;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--text-dark);
+}
+
+/* Améliorations des cartes */
+.card {
+  background-color: var(--card-bg);
+  border-radius: 1rem;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  transition: var(--transition);
+}
+
+.card:hover {
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-5px);
+}
+
+.card-body {
+  padding: 1.5rem;
+}
+
+.card-header {
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+  background-color: rgba(249, 250, 251, 0.5);
+}
+
+.card-footer {
+  padding: 1rem 1.5rem;
+  background-color: rgba(249, 250, 251, 0.5);
+  border-top: 1px solid var(--border-color);
+}
+
+/* Boutons améliorés */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  font-weight: 500;
+  padding: 0.625rem 1.25rem;
+  border-radius: 0.5rem;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  z-index: 1;
+}
+
+.btn::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(255, 255, 255, 0.1);
+  z-index: -1;
+  transform: scaleX(0);
+  transform-origin: bottom right;
+  transition: transform 0.5s ease;
+}
+
+.btn:hover::after {
+  transform: scaleX(1);
+  transform-origin: bottom left;
+}
+
+.btn-primary {
+  background: var(--gradient-primary);
+  color: white;
+  border: none;
+}
+
+.btn-primary:hover {
+  background-position: right center;
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+  transform: translateY(-2px);
+}
+
+.btn-secondary {
+  background: var(--gradient-secondary);
+  color: white;
+  border: none;
+}
+
+.btn-secondary:hover {
+  background-position: right center;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+  transform: translateY(-2px);
+}
+
+/* Animation pour l'icône dans les boutons */
+.btn svg {
+  transition: var(--transition);
+}
+
+.btn:hover svg {
+  transform: scale(1.2);
+}
+
+/* Formulaires améliorés */
+.form-label {
+  display: block;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+  color: var(--text-dark);
+}
+
+input[type="text"],
+input[type="email"],
+input[type="password"],
+textarea,
+select {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: 0.5rem;
+  background-color: white;
+  transition: var(--transition);
+}
+
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+}
+
+/* Badges de statut améliorés */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.375rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1;
+  border-radius: 9999px;
+  letter-spacing: 0.025em;
+  text-transform: uppercase;
+}
+
+.badge-blue {
+  background-color: rgba(59, 130, 246, 0.1);
+  color: #3b82f6;
+}
+
+.badge-green {
+  background-color: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+}
+
+.badge-yellow {
+  background-color: rgba(245, 158, 11, 0.1);
+  color: #f59e0b;
+}
+
+.badge-red {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
+/* Amélioration des animations AOS */
+[data-aos] {
+  transition-duration: 800ms !important;
+}
+
+/* Animations personnalisées */
+@keyframes pulse-shadow {
+  0% {
+    box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(79, 70, 229, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(79, 70, 229, 0);
+  }
+}
+
+@keyframes float {
+  0% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+  100% {
+    transform: translateY(0px);
+  }
+}
+
+/* Améliorations spécifiques pour la page report_problem */
+.category-item {
+  background-color: white;
+  border-radius: 1rem;
+  padding: 1.5rem 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: var(--shadow-sm);
+  position: relative;
+  overflow: hidden;
+  border: 2px solid transparent;
+}
+
+.category-item::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--gradient-primary);
+  opacity: 0;
+  z-index: -1;
+  transition: opacity 0.3s ease;
+}
+
+.category-item:hover {
+  transform: translateY(-8px) scale(1.03);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--primary);
+}
+
+.category-item:hover svg {
+  transform: scale(1.2);
+  color: var(--primary);
+  animation: float 2s ease-in-out infinite;
+}
+
+.category-item svg {
+  width: 3rem;
+  height: 3rem;
+  margin-bottom: 1rem;
+  color: var(--primary);
+  transition: all 0.3s ease;
+}
+
+.category-item span {
+  font-weight: 600;
+  color: var(--text-dark);
+  transition: var(--transition);
+}
+
+.category-item:hover span {
+  color: var(--primary);
+}
+
+/* Amélioration du conteneur de carte */
+#map-input-container {
+  border-radius: 1rem;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+  margin-top: 1rem;
+  border: 2px solid var(--border-color);
+  transition: var(--transition);
+}
+
+#map-input-container:hover {
+  box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+  border-color: var(--primary);
+}
+
+/* Tables améliorées */
+table {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%;
+}
+
+table thead th {
+  background-color: #f9fafb;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.75rem 1rem;
+  font-size: 0.75rem;
+  color: var(--text-light);
+}
+
+table tbody tr {
+  transition: var(--transition);
+}
+
+table tbody tr:hover {
+  background-color: rgba(79, 70, 229, 0.05);
+}
+
+table tbody td {
+  padding: 1rem;
+  vertical-align: middle;
+}
+
+/* Améliorer les icônes héros */
+.hero-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  transition: transform 0.3s ease;
+}
+
+/* Animation pour les états vides */
+.empty-state-animation {
+  animation: float 6s ease-in-out infinite;
+}
+
+/* Effet de hover pour les liens */
+a {
+  transition: var(--transition);
+}
+
+a:hover {
+  opacity: 0.8;
+}
+
+/* Amélioration des alertes */
+.alert {
+  padding: 1rem;
+  border-radius: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.alert-error {
+  background-color: rgba(239, 68, 68, 0.1);
+  border-left: 4px solid #ef4444;
+  color: #b91c1c;
+}
+
+/* Style spécifique pour la page détail */
+.detail-header {
+  border-radius: 1rem;
+  padding: 2rem;
+  background: var(--gradient-primary);
+  color: white;
+  margin-bottom: 2rem;
+}
+
+/* Animation pour la photo */
+.problem-photo {
+  transition: var(--transition);
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.problem-photo:hover {
+  transform: scale(1.03);
+}
+main img, .card img { 
+    max-width: 100%; 
+    height: auto; 
+} 
+
+/* Or specifically exclude leaflet markers */
+img:not(.leaflet-marker-icon) {
+     max-width: 100%; 
+     height: auto; 
+}
+      
+        /* Animations */
+        [data-aos] { transition-property: transform, opacity; }
+
+        /* REMOVED .hero-icon class definition */
+
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+{# Initialize sidebarOpen state for Alpine #}
+<body class="antialiased" x-data="{ sidebarOpen: false }">
+
+    <div class="flex h-screen bg-gray-100">
+
+        <!-- Sidebar (Only shown if user is authenticated) -->
+        {% if user.is_authenticated %}
+            {% include 'components/sidebar.html' %}
+        {% endif %}
+
+        <!-- Content Area -->
+        <div class="flex-1 flex flex-col overflow-hidden">
+            <!-- Navbar (Only shown if user is authenticated) -->
+            {% if user.is_authenticated %}
+                 {# Ensure Navbar is rendered within the main flex container #}
+                {% include 'components/navbar.html' %}
+            {% endif %}
+
+            <!-- Main Content -->
+            <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-4 md:p-6 lg:p-8 relative"> {# Added relative positioning #}
+                <!-- Flash Messages Container -->
+                 {# Increased z-index to ensure messages are on top #}
+                <div class="fixed top-5 right-5 z-[60] w-full max-w-sm space-y-3">
+                    {% if messages %}
+                        {% for message in messages %}
+                        <div x-data="{ show: true }"
+                             x-show="show"
+                             x-init="setTimeout(() => show = false, 5000)"
+                             x-transition:enter="transition ease-out duration-300"
+                             x-transition:enter-start="opacity-0 transform translate-x-4"
+                             x-transition:enter-end="opacity-100 transform translate-x-0"
+                             x-transition:leave="transition ease-in duration-300"
+                             x-transition:leave-start="opacity-100 transform translate-x-0"
+                             x-transition:leave-end="opacity-0 transform translate-x-4"
+                             class="alert alert-{{ message.tags|default:'info' }}"
+                             role="alert"
+                             aria-live="assertive" aria-atomic="true">
+                             {# Icons with explicit sizes #}
+                             {% if message.level_tag == 'success' %}
+                                <svg class="w-5 h-5 mr-2 flex-shrink-0 text-green-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>
+                             {% elif message.level_tag == 'error' %}
+                                <svg class="w-5 h-5 mr-2 flex-shrink-0 text-red-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m9.75 9.75 4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>
+                             {% elif message.level_tag == 'warning' %}
+                                 <svg class="w-5 h-5 mr-2 flex-shrink-0 text-yellow-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.008v.008H12v-.008Z" /></svg>
+                             {% else %} {# Default to info #}
+                                 <svg class="w-5 h-5 mr-2 flex-shrink-0 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg>
+                             {% endif %}
+                            <span class="flex-1">{{ message }}</span>
+                             {# Close button icon with explicit size #}
+                            <button @click="show = false" type="button" class="alert-dismiss-btn alert-{{ message.tags|default:'info' }}" aria-label="Close">
+                                <span class="sr-only">Fermer</span>
+                                <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+                        {% endfor %}
+                    {% endif %}
+                </div><!-- End Flash Messages -->
+
+                <!-- Page Content -->
+                {% block content %}{% endblock %}
+
+            </main>
+
+            <!-- Footer (Included within the main content flex container) -->
+            {% if user.is_authenticated %}
+                {% include 'components/footer.html' %}
+            {% endif %}
+
+        </div><!-- End Content Area -->
+    </div><!-- End Flex Container -->
+
+    <!-- Initialize AOS -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            AOS.init({
+                duration: 600,
+                easing: 'ease-in-out-cubic',
+                once: true,
+                offset: 50,
+            });
+        });
+    </script>
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

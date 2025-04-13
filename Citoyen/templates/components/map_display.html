@@ -1,0 +1,56 @@
+{% comment %} templates/components/map_display.html {% endcomment %}
+
+{# Requires Leaflet CSS/JS loaded in the parent template #}
+{# Requires context variables 'latitude' and 'longitude' #}
+
+<div>
+    <dt class="text-sm font-medium text-gray-500 mb-2">Localisation Signalée</dt>
+    <dd class="mt-1">
+        {% if latitude and longitude %}
+            <p class="text-sm text-gray-700 mb-2">Lat: {{ latitude|floatformat:6 }}, Lng: {{ longitude|floatformat:6 }}</p>
+            <div id="map-display-container" style="height: 250px; width: 100%;" class="rounded-lg border border-gray-300 z-0"></div>
+        {% else %}
+             <p class="text-sm text-gray-500 italic">Localisation non fournie.</p>
+        {% endif %}
+    </dd>
+</div>
+
+{% if latitude and longitude %}
+<script>
+// Ensure this script runs after the DOM is ready and Leaflet is loaded
+document.addEventListener('DOMContentLoaded', function () {
+    const lat = {{ latitude|default:0 }};
+    const lng = {{ longitude|default:0 }};
+    const mapElement = document.getElementById('map-display-container');
+
+    if (mapElement && lat !== 0 && lng !== 0) {
+        const map = L.map(mapElement, {
+             scrollWheelZoom: false // Disable scroll zoom by default on display maps
+        }).setView([lat, lng], 15); // Adjust zoom level
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+             maxZoom: 19,
+        }).addTo(map);
+
+        L.marker([lat, lng]).addTo(map)
+            .bindPopup('Localisation du problème signalée.');
+            // .openPopup(); // Optional: Open popup by default
+
+        // Disable map interactions for a static display feel
+        map.dragging.disable();
+        map.touchZoom.disable();
+        map.doubleClickZoom.disable();
+        // map.scrollWheelZoom.disable(); // Already disabled in options
+        map.boxZoom.disable();
+        map.keyboard.disable();
+        if (map.tap) map.tap.disable();
+        mapElement.style.cursor = 'default';
+
+    } else if (mapElement) {
+        mapElement.innerHTML = '<p class="text-center text-gray-500 p-4">Impossible d\'afficher la carte (coordonnées invalides).</p>';
+        mapElement.style.height = 'auto';
+    }
+});
+</script>
+{% endif %}

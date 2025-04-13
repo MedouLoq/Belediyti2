@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+
+{% block title %}Modifier Mon Profil{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div data-aos="fade-down">
+        <h1 class="text-3xl font-bold text-gray-800">Modifier Mon Profil</h1>
+        <p class="mt-1 text-lg text-gray-600">Mettez à jour vos informations personnelles.</p>
+    </div>
+
+    <div class="card max-w-2xl mx-auto" data-aos="fade-up" data-aos-delay="100">
+         <form method="post" class="space-y-6 card-body">
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+                <div class="alert alert-error" role="alert">
+                    {% for error in form.non_field_errors %}
+                        <span>{{ error }}</span>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            <h3 class="text-lg font-medium text-gray-800 border-b pb-2 border-gray-200">Informations Personnelles</h3>
+
+            {# Render CitizenProfileForm fields #}
+            {% for field in form %}
+                 <div>
+                    <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }} {% if field.field.required %}<span class="text-red-500">*</span>{% endif %}</label>
+                    {{ field }}
+                    {% if field.help_text %}
+                        <p class="mt-1 text-xs text-gray-500">{{ field.help_text|safe }}</p>
+                    {% endif %}
+                    {% if field.errors %}
+                        <p class="text-red-500 text-xs italic mt-1">{{ field.errors.as_text }}</p>
+                    {% endif %}
+                </div>
+            {% endfor %}
+
+             {# Optional: Add fields to edit User model data (like email) if needed
+                You would typically use a different form (e.g., UserChangeForm)
+                and pass it in the context as 'user_form'.
+
+                <hr class="my-6 border-gray-200">
+                <h3 class="text-lg font-medium text-gray-800 border-b pb-2 border-gray-200">Informations du Compte</h3>
+
+                 <div>
+                    <label for="{{ user_form.email.id_for_label }}" class="form-label">{{ user_form.email.label }}</label>
+                    {{ user_form.email }}
+                    {% if user_form.email.errors %}<p class="text-red-500 text-xs italic mt-1">{{ user_form.email.errors.as_text }}</p>{% endif %}
+                </div>
+             #}
+
+
+            <div class="pt-5 border-t border-gray-200 flex justify-end">
+                <button type="submit" class="btn btn-primary">
+                   <svg class="hero-icon mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" /></svg>
+                    Enregistrer les Modifications
+                </button>
+            </div>
+         </form>
+    </div>
+</div>
+{% endblock %}

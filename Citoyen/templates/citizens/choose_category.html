@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Choisir une Catégorie{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto p-6 bg-white shadow-lg rounded-lg">
+    <h2 class="text-2xl font-bold mb-4 text-center">Étape 1 : Choisir une Catégorie</h2>
+    <p class="text-gray-600 text-center mb-6">Veuillez sélectionner le type de problème que vous souhaitez signaler.</p>
+    
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for category in categories %}
+            <a href="{% url 'report_problem' %}?category_id={{ category.id }}" 
+               class="category-item text-center block bg-gray-50 rounded-lg p-6 border border-gray-200 hover:bg-blue-50 transition-colors duration-200">
+                {# You can put an icon or an image representing each category #}
+                <div class="mb-2 text-blue-500 text-3xl">
+                    <!-- Example Icon (Tailwind Heroicons) - adjust to your actual icon -->
+                    <svg class="w-8 h-8 mx-auto" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"></path>
+                    </svg>
+                </div>
+                <span class="font-semibold text-gray-800">{{ category.name }}</span>
+            </a>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
