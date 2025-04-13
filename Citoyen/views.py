@@ -156,10 +156,13 @@ def report_problem(request):
     if request.method == "POST":
         form = ProblemReportForm(request.POST, request.FILES)
         if form.is_valid():
+            accuracy = request.POST.get("accuracy")
+            if accuracy and float(accuracy) > 1000:
+                messages.error(request, "La précision de votre position est trop faible. Veuillez réessayer dans un endroit avec une meilleure réception GPS.")
+                return render(request, "citizens/report_problem.html", {"form": form, "categories": categories})
             citizen = get_object_or_404(Citizen, user=request.user)
             problem = form.save(commit=False)
             problem.citizen = citizen
-
             # Get the selected category from the hidden input.
             category_id = request.POST.get("selected_category")
             if category_id:

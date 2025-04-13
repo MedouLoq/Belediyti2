@@ -19,6 +19,28 @@
       display: none;
     }
   </style>
+  <style>
+    .loader {
+      border: 5px solid #f3f3f3;
+      border-radius: 50%;
+      border-top: 5px solid #3498db;
+      width: 40px;
+      height: 40px;
+      margin: 10px auto;
+      -webkit-animation: spin 2s linear infinite;
+      animation: spin 2s linear infinite;
+    }
+    
+    @-webkit-keyframes spin {
+      0% { -webkit-transform: rotate(0deg); }
+      100% { -webkit-transform: rotate(360deg); }
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
 {% endblock %}
 
 {% block content %}
@@ -125,87 +147,184 @@
         }
       
         function requestLocation() {
-          if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-              showPosition,
-              showError,
-              { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 }
-            );
-          } else {
-            alert("La géolocalisation n'est pas supportée par votre navigateur.");
+  // Clear any previous attempts
+  window.clearHighPrecisionAttempt = false;
+  
+  if (navigator.geolocation) {
+    // Show loading indicator
+    document.getElementById("map").innerHTML = '<div class="text-center py-8"><p>Acquisition GPS en cours... Veuillez patienter jusqu\'à 60 secondes pour une précision optimale</p><div class="loader"></div></div>';
+    
+    // Force high precision mode with strict parameters
+    navigator.geolocation.watchPosition(
+      function(position) {
+        const accuracy = position.coords.accuracy;
+        console.log(`Current accuracy: ${accuracy}m`);
+        
+        // Only accept positions with good accuracy (under 100m)
+        if (accuracy <= 100) {
+          // We got high precision coordinates - use them
+          processHighPrecisionPosition(position);
+          window.clearHighPrecisionAttempt = true;
+        }
+      },
+      function(error) {
+        console.error("Position watch error:", error);
+      },
+      { 
+        enableHighAccuracy: true,
+        timeout: 60000,
+        maximumAge: 0
+      }
+    );
+    
+    // Set a timeout - if we don't get high precision within 60 seconds,
+    // take whatever position we have
+    setTimeout(function() {
+      if (!window.clearHighPrecisionAttempt) {
+        navigator.geolocation.getCurrentPosition(
+          function(position) {
+            console.log(`Fallback position with accuracy: ${position.coords.accuracy}m`);
+            processPosition(position);
+          },
+          showError,
+          { 
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 0
           }
-        }
+        );
+      }
+    }, 60000);
+  } else {
+    alert("La géolocalisation n'est pas supportée par votre navigateur.");
+  }
+}
+
+function processHighPrecisionPosition(position) {
+  const lat = position.coords.latitude;
+  const lon = position.coords.longitude;
+  const accuracy = position.coords.accuracy;
+  
+  console.log(`High precision position obtained: ${lat}, ${lon} (accuracy: ${accuracy}m)`);
+  
+  // Store position data
+  document.getElementById("id_latitude").value = lat;
+  document.getElementById("id_longitude").value = lon;
+  
+  // Initialize map with obtained position
+  initMap(lat, lon, accuracy);
+  
+  // Get address information
+  reverseGeocode(lat, lon);
+}
+
+function processPosition(position) {
+  // Same as previous function but used for fallback positions
+  const lat = position.coords.latitude;
+  const lon = position.coords.longitude;
+  const accuracy = position.coords.accuracy;
+  
+  // Store position data
+  document.getElementById("id_latitude").value = lat;
+  document.getElementById("id_longitude").value = lon;
+  
+  // Initialize map
+  initMap(lat, lon, accuracy);
+  
+  // Get address
+  reverseGeocode(lat, lon);
+  
+  // Show warning if precision is poor
+  if (accuracy > 100) {
+    alert(`Attention: La précision de votre position est de ${Math.round(accuracy)}m, ce qui est relativement imprécis. Cela peut affecter la localisation exacte du problème signalé.`);
+  }
+}
+function initMap(lat, lon, accuracy) {
+  // Create a map focused on the location with appropriate zoom level
+  const map = L.map('map', {
+    center: [lat, lon],
+    zoom: calculateZoomLevel(accuracy),
+    dragging: false,      // Disable map interaction
+    zoomControl: false,   // Disable zoom controls
+    scrollWheelZoom: false,
+    doubleClickZoom: false,
+    boxZoom: false,
+    keyboard: false,
+    touchZoom: false      // Disable all user interaction
+  });
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(map);
+
+  // Add a marker (not draggable)
+  L.marker([lat, lon], { draggable: false }).addTo(map)
+    .bindPopup(`Position détectée (précision: ${Math.round(accuracy)}m)`)
+    .openPopup();
+  
+  // Show accuracy circle
+  L.circle([lat, lon], {
+    radius: accuracy,
+    color: 'blue',
+    fillColor: '#3388ff',
+    fillOpacity: 0.2
+  }).addTo(map);
+}
+
+function calculateZoomLevel(accuracy) {
+  // Calculate appropriate zoom level based on accuracy
+  if (accuracy < 10) return 19;        // Very accurate (< 10m)
+  else if (accuracy < 30) return 18;   // Good accuracy (10-30m)
+  else if (accuracy < 70) return 17;   // Moderate accuracy (30-70m)
+  else if (accuracy < 200) return 16;  // Poor accuracy (70-200m)
+  else return 15;                      // Very poor accuracy (> 200m)
+}
+
+function reverseGeocode(lat, lon) {
+  // Use multiple geocoding services for redundancy
+  // First try Nominatim
+  const nominatimUrl = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}&accept-language=fr&zoom=18&addressdetails=1`;
+  
+  fetch(nominatimUrl)
+    .then(response => response.json())
+    .then(data => {
+      const displayName = data.display_name || "";
+      const addressParts = data.address || {};
       
-        function showPosition(position) {
-          const lat = position.coords.latitude;
-          const lon = position.coords.longitude;
-          document.getElementById("id_latitude").value = lat;
-          document.getElementById("id_longitude").value = lon;
+      // Create a detailed address with precise coordinates
+      const preciseAddress = `${displayName} (${lat.toFixed(7)}, ${lon.toFixed(7)})`;
+      document.getElementById("id_location").value = preciseAddress;
       
-          // Initialize non-interactive Leaflet map.
-          const map = L.map('map', {
-            center: [lat, lon],
-            zoom: 18,
-            dragging: false,
-            zoomControl: false,
-            scrollWheelZoom: false,
-            doubleClickZoom: false,
-            boxZoom: false,
-            keyboard: false,
-          });
-      
-          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; OpenStreetMap contributors'
-          }).addTo(map);
-      
-          L.marker([lat, lon], { draggable: false }).addTo(map)
-            .bindPopup("Votre position détectée")
-            .openPopup();
-      
-          // Reverse geocode using Nominatim.
-          const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}&accept-language=fr`;
-          
-          fetch(url)
-            .then(response => response.json())
-            .then(data => {
-              // Use display_name from the response.
-              const displayName = data.display_name || "";
-              // Example: "F-Nord, Nouakchott, Ksar, Nouakchott Ouest, Mauritanie"
-              let parts = displayName.split(',');
-              // Extract the third component as the municipality candidate, if available.
-              let municipalityCandidate = parts.length >= 3 ? parts[2].trim() : "";
-              // Update the hidden field for municipality candidate.
-              document.getElementById("municipality_candidate").value = municipalityCandidate;
-      
-              // For the location field, combine full display name with precise coordinates.
-              const preciseAddress = `${displayName} (${lat.toFixed(7)}, ${lon.toFixed(7)})`;
-              document.getElementById("id_location").value = preciseAddress;
-            })
-            .catch(err => {
-              console.error("Erreur lors de la récupération de l'adresse :", err);
-              document.getElementById("id_location").value = `Latitude: ${lat.toFixed(7)}, Longitude: ${lon.toFixed(7)}`;
-            });
-        }
-      
-        function showError(error) {
-          let msg = "";
-          switch (error.code) {
-            case error.PERMISSION_DENIED:
-              msg = "Vous devez autoriser le partage de votre position pour signaler un problème.";
-              break;
-            case error.POSITION_UNAVAILABLE:
-              msg = "La position est indisponible.";
-              break;
-            case error.TIMEOUT:
-              msg = "La requête de position a expiré.";
-              break;
-            default:
-              msg = "Une erreur s'est produite lors de la récupération de votre position.";
-              break;
-          }
-          alert(msg);
-        }
-      </script>
+      // Set municipality candidate
+      let municipalityCandidate = addressParts.town || addressParts.city || addressParts.village || addressParts.suburb || "";
+      document.getElementById("municipality_candidate").value = municipalityCandidate;
+    })
+    .catch(err => {
+      console.error("Erreur avec Nominatim:", err);
+      // Fall back to coordinate-only display
+      document.getElementById("id_location").value = `Latitude: ${lat.toFixed(7)}, Longitude: ${lon.toFixed(7)}`;
+    });
+}
+
+function showError(error) {
+  let msg = "";
+  switch (error.code) {
+    case error.PERMISSION_DENIED:
+      msg = "Vous devez autoriser l'accès à votre position pour signaler un problème. Veuillez activer la géolocalisation dans les paramètres de votre navigateur et réessayer.";
+      break;
+    case error.POSITION_UNAVAILABLE:
+      msg = "Votre position est indisponible. Veuillez vérifier que votre GPS est activé et que vous êtes dans une zone avec une bonne réception.";
+      break;
+    case error.TIMEOUT:
+      msg = "La détermination de votre position a pris trop de temps. Veuillez vérifier votre connexion et réessayer.";
+      break;
+    default:
+      msg = "Une erreur s'est produite lors de la récupération de votre position. Veuillez réessayer ou utiliser un autre appareil.";
+      break;
+  }
+  alert(msg);
+}
+        </script>
       
       
 {% endblock %}
