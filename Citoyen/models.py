@@ -105,8 +105,6 @@ class Problem(models.Model):
         verbose_name = _('Problème')
         verbose_name_plural = _('Problèmes')
 
-    def __str__(self):
-        return f"Problème #{self.id} - {self.category.name}"
 
 # Réclamations
 class Complaint(models.Model):

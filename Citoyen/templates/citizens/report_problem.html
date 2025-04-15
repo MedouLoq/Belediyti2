@@ -3,7 +3,7 @@
 {% block title %}Signaler un Problème{% endblock %}
 
 {% block extra_css %}
-  <!-- Leaflet CSS for the map (if used in step 2) -->
+  <!-- Leaflet CSS for the map -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
   <style>
@@ -18,8 +18,6 @@
     .step2 {
       display: none;
     }
-  </style>
-  <style>
     .loader {
       border: 5px solid #f3f3f3;
       border-radius: 50%;
@@ -53,7 +51,6 @@
             {% for category in categories %}
             <div class="cursor-pointer category-item bg-gray-50 rounded-lg p-6 border border-gray-200 hover:bg-blue-50 transition-colors duration-200 text-center"
                  onclick="selectCategory('{{ category.id }}', '{{ category.name }}')">
-                <!-- Optionally add an icon or image here -->
                 <div class="mb-2 text-blue-500 text-3xl">
                     <svg class="w-8 h-8 mx-auto" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
@@ -66,265 +63,316 @@
     </div>
 
     <!-- Step 2: Problem Details -->
-    <!-- Step 2: Problem Details -->
-<!-- Step 2: Problem Details -->
-<div id="step2" class="step2">
-    <h2 class="text-2xl font-bold mb-4 text-center">Étape 2 : Détails du Problème</h2>
-    <p class="mb-6 text-center text-gray-600">Confirmez votre catégorie et entrez les autres informations.</p>
-    
-    <!-- Begin form -->
-    <form method="POST" enctype="multipart/form-data" novalidate>
-      {% csrf_token %}
-      <!-- Hidden field to store the selected category (moved inside the form) -->
-      <input type="hidden" id="selected_category" name="selected_category" value="">
-      <!-- New hidden field for the municipality candidate, if needed -->
-      <input type="hidden" id="municipality_candidate" name="municipality_candidate" value="">
+    <div id="step2" class="step2">
+        <h2 class="text-2xl font-bold mb-4 text-center">Étape 2 : Détails du Problème</h2>
+        <p class="mb-6 text-center text-gray-600">Confirmez votre catégorie et entrez les autres informations.</p>
+        
+        <!-- Begin form -->
+        <form method="POST" enctype="multipart/form-data" novalidate>
+          {% csrf_token %}
+          <!-- Hidden fields -->
+          <input type="hidden" id="selected_category" name="selected_category" value="">
+          <input type="hidden" id="municipality_id" name="municipality_id" value="">
+          <input type="hidden" id="municipality_candidate" name="municipality_candidate" value="">
   
-      <!-- Optionally display the selected category (read-only) -->
-      <div class="mb-4">
-        <label class="form-label font-medium">Catégorie Sélectionnée</label>
-        <input type="text" id="display_category" value="" readonly
-               class="form-input block w-full px-4 py-3 leading-tight text-gray-700 bg-gray-100 border border-gray-300 rounded-lg">
-      </div>
+          <!-- Display the selected category (read-only) -->
+          <div class="mb-4">
+            <label class="form-label font-medium">Catégorie Sélectionnée</label>
+            <input type="text" id="display_category" value="" readonly
+                   class="form-input block w-full px-4 py-3 leading-tight text-gray-700 bg-gray-100 border border-gray-300 rounded-lg">
+          </div>
   
-      <!-- Other form fields -->
-      <div class="mb-4">
-        <label for="{{ form.description.id_for_label }}" class="form-label">Description du Problème</label>
-        {{ form.description }}
-        {% if form.description.errors %}
-          <p class="text-red-500 text-sm mt-1">{{ form.description.errors }}</p>
-        {% endif %}
-      </div>
-      <div class="mb-4">
-        <label for="{{ form.photo.id_for_label }}" class="form-label">Photo (facultatif)</label>
-        {{ form.photo }}
-        {% if form.photo.errors %}
-          <p class="text-red-500 text-sm mt-1">{{ form.photo.errors }}</p>
-        {% endif %}
-      </div>
-      <div class="mb-4">
-        <label for="{{ form.location.id_for_label }}" class="form-label">Adresse / Lieu</label>
-        {{ form.location }}
-        {% if form.location.errors %}
-          <p class="text-red-500 text-sm mt-1">{{ form.location.errors }}</p>
-        {% endif %}
-      </div>
-      <!-- Hidden inputs for latitude and longitude -->
-      {{ form.latitude }}
-      {{ form.longitude }}
+          <!-- Other form fields -->
+          <div class="mb-4">
+            <label for="{{ form.description.id_for_label }}" class="form-label">Description du Problème</label>
+            {{ form.description }}
+            {% if form.description.errors %}
+              <p class="text-red-500 text-sm mt-1">{{ form.description.errors }}</p>
+            {% endif %}
+          </div>
+          <div class="mb-4">
+            <label for="{{ form.photo.id_for_label }}" class="form-label">Photo (facultatif)</label>
+            {{ form.photo }}
+            {% if form.photo.errors %}
+              <p class="text-red-500 text-sm mt-1">{{ form.photo.errors }}</p>
+            {% endif %}
+          </div>
+          <div class="mb-4">
+            <label for="{{ form.location.id_for_label }}" class="form-label">Adresse / Lieu</label>
+            {{ form.location }}
+            {% if form.location.errors %}
+              <p class="text-red-500 text-sm mt-1">{{ form.location.errors }}</p>
+            {% endif %}
+          </div>
+          <!-- Hidden inputs for latitude and longitude -->
+          {{ form.latitude }}
+          {{ form.longitude }}
   
-      <!-- (Optional) Map container -->
-      <div id="map"></div>
+          <!-- Map container -->
+          <div id="map"></div>
   
-      <div class="flex justify-center mt-6">
-        <button type="submit" class="btn btn-primary">Signaler le problème</button>
-      </div>
-    </form>
-    <!-- End form -->
-  </div>
-  
-  
+          <div class="flex justify-center mt-6">
+            <button type="submit" class="btn btn-primary">Signaler le problème</button>
+          </div>
+        </form>
+        <!-- End form -->
+    </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
-  <!-- Leaflet JS (if using the map) -->
+  <!-- Leaflet JS -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 
-    <script>
-        // This function is called when the user selects a category.
-        function selectCategory(categoryId, categoryName) {
-          // Save the selected category in the hidden input.
-          document.getElementById("selected_category").value = categoryId;
-          // Display the chosen category (read-only).
-          document.getElementById("display_category").value = categoryName;
-          // Hide Step 1 and show Step 2.
-          document.getElementById("step1").style.display = 'none';
-          document.getElementById("step2").style.display = 'block';
-          // Request the user's location.
-          requestLocation();
-        }
-      
-        function requestLocation() {
-  // Clear any previous attempts
-  window.clearHighPrecisionAttempt = false;
+  <script>
+    // This function is called when the user selects a category.
+    function selectCategory(categoryId, categoryName) {
+      // Save the selected category in the hidden input.
+      document.getElementById("selected_category").value = categoryId;
+      // Display the chosen category (read-only).
+      document.getElementById("display_category").value = categoryName;
+      // Hide Step 1 and show Step 2.
+      document.getElementById("step1").style.display = 'none';
+      document.getElementById("step2").style.display = 'block';
+      // Request the user's location.
+      requestLocation();
+    }
   
-  if (navigator.geolocation) {
-    // Show loading indicator
-    document.getElementById("map").innerHTML = '<div class="text-center py-8"><p>Acquisition GPS en cours... Veuillez patienter jusqu\'à 60 secondes pour une précision optimale</p><div class="loader"></div></div>';
-    
-    // Force high precision mode with strict parameters
-    navigator.geolocation.watchPosition(
-      function(position) {
-        const accuracy = position.coords.accuracy;
-        console.log(`Current accuracy: ${accuracy}m`);
+    function requestLocation() {
+      // Clear any previous attempts
+      window.clearHighPrecisionAttempt = false;
+      
+      if (navigator.geolocation) {
+        // Show loading indicator
+        document.getElementById("map").innerHTML = '<div class="text-center py-8"><p>Acquisition GPS en cours... Veuillez patienter jusqu\'à 60 secondes pour une précision optimale</p><div class="loader"></div></div>';
         
-        // Only accept positions with good accuracy (under 100m)
-        if (accuracy <= 100) {
-          // We got high precision coordinates - use them
-          processHighPrecisionPosition(position);
-          window.clearHighPrecisionAttempt = true;
-        }
-      },
-      function(error) {
-        console.error("Position watch error:", error);
-      },
-      { 
-        enableHighAccuracy: true,
-        timeout: 60000,
-        maximumAge: 0
-      }
-    );
-    
-    // Set a timeout - if we don't get high precision within 60 seconds,
-    // take whatever position we have
-    setTimeout(function() {
-      if (!window.clearHighPrecisionAttempt) {
-        navigator.geolocation.getCurrentPosition(
+        // Force high precision mode with strict parameters
+        navigator.geolocation.watchPosition(
           function(position) {
-            console.log(`Fallback position with accuracy: ${position.coords.accuracy}m`);
-            processPosition(position);
+            const accuracy = position.coords.accuracy;
+            console.log(`Current accuracy: ${accuracy}m`);
+            
+            // Only accept positions with good accuracy (under 100m)
+            if (accuracy <= 100) {
+              // We got high precision coordinates - use them
+              processHighPrecisionPosition(position);
+              window.clearHighPrecisionAttempt = true;
+            }
           },
-          showError,
+          function(error) {
+            console.error("Position watch error:", error);
+          },
           { 
             enableHighAccuracy: true,
-            timeout: 10000,
+            timeout: 60000,
             maximumAge: 0
           }
         );
+        
+        // Set a timeout - if we don't get high precision within 60 seconds,
+        // take whatever position we have
+        setTimeout(function() {
+          if (!window.clearHighPrecisionAttempt) {
+            navigator.geolocation.getCurrentPosition(
+              function(position) {
+                console.log(`Fallback position with accuracy: ${position.coords.accuracy}m`);
+                processPosition(position);
+              },
+              showError,
+              { 
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 0
+              }
+            );
+          }
+        }, 60000);
+      } else {
+        alert("La géolocalisation n'est pas supportée par votre navigateur.");
       }
-    }, 60000);
-  } else {
-    alert("La géolocalisation n'est pas supportée par votre navigateur.");
-  }
-}
+    }
 
-function processHighPrecisionPosition(position) {
-  const lat = position.coords.latitude;
-  const lon = position.coords.longitude;
-  const accuracy = position.coords.accuracy;
-  
-  console.log(`High precision position obtained: ${lat}, ${lon} (accuracy: ${accuracy}m)`);
-  
-  // Store position data
-  document.getElementById("id_latitude").value = lat;
-  document.getElementById("id_longitude").value = lon;
-  
-  // Initialize map with obtained position
-  initMap(lat, lon, accuracy);
-  
-  // Get address information
-  reverseGeocode(lat, lon);
-}
-
-function processPosition(position) {
-  // Same as previous function but used for fallback positions
-  const lat = position.coords.latitude;
-  const lon = position.coords.longitude;
-  const accuracy = position.coords.accuracy;
-  
-  // Store position data
-  document.getElementById("id_latitude").value = lat;
-  document.getElementById("id_longitude").value = lon;
-  
-  // Initialize map
-  initMap(lat, lon, accuracy);
-  
-  // Get address
-  reverseGeocode(lat, lon);
-  
-  // Show warning if precision is poor
-  if (accuracy > 100) {
-    alert(`Attention: La précision de votre position est de ${Math.round(accuracy)}m, ce qui est relativement imprécis. Cela peut affecter la localisation exacte du problème signalé.`);
-  }
-}
-function initMap(lat, lon, accuracy) {
-  // Create a map focused on the location with appropriate zoom level
-  const map = L.map('map', {
-    center: [lat, lon],
-    zoom: calculateZoomLevel(accuracy),
-    dragging: false,      // Disable map interaction
-    zoomControl: false,   // Disable zoom controls
-    scrollWheelZoom: false,
-    doubleClickZoom: false,
-    boxZoom: false,
-    keyboard: false,
-    touchZoom: false      // Disable all user interaction
-  });
-
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenStreetMap contributors'
-  }).addTo(map);
-
-  // Add a marker (not draggable)
-  L.marker([lat, lon], { draggable: false }).addTo(map)
-    .bindPopup(`Position détectée (précision: ${Math.round(accuracy)}m)`)
-    .openPopup();
-  
-  // Show accuracy circle
-  L.circle([lat, lon], {
-    radius: accuracy,
-    color: 'blue',
-    fillColor: '#3388ff',
-    fillOpacity: 0.2
-  }).addTo(map);
-}
-
-function calculateZoomLevel(accuracy) {
-  // Calculate appropriate zoom level based on accuracy
-  if (accuracy < 10) return 19;        // Very accurate (< 10m)
-  else if (accuracy < 30) return 18;   // Good accuracy (10-30m)
-  else if (accuracy < 70) return 17;   // Moderate accuracy (30-70m)
-  else if (accuracy < 200) return 16;  // Poor accuracy (70-200m)
-  else return 15;                      // Very poor accuracy (> 200m)
-}
-
-function reverseGeocode(lat, lon) {
-  // Use multiple geocoding services for redundancy
-  // First try Nominatim
-  const nominatimUrl = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}&accept-language=fr&zoom=18&addressdetails=1`;
-  
-  fetch(nominatimUrl)
-    .then(response => response.json())
-    .then(data => {
-      const displayName = data.display_name || "";
-      const addressParts = data.address || {};
+    function processHighPrecisionPosition(position) {
+      const lat = position.coords.latitude;
+      const lon = position.coords.longitude;
+      const accuracy = position.coords.accuracy;
       
-      // Create a detailed address with precise coordinates
-      const preciseAddress = `${displayName} (${lat.toFixed(7)}, ${lon.toFixed(7)})`;
-      document.getElementById("id_location").value = preciseAddress;
+      console.log(`High precision position obtained: ${lat}, ${lon} (accuracy: ${accuracy}m)`);
       
-      // Set municipality candidate
-      let municipalityCandidate = addressParts.town || addressParts.city || addressParts.village || addressParts.suburb || "";
-      document.getElementById("municipality_candidate").value = municipalityCandidate;
-    })
-    .catch(err => {
-      console.error("Erreur avec Nominatim:", err);
-      // Fall back to coordinate-only display
-      document.getElementById("id_location").value = `Latitude: ${lat.toFixed(7)}, Longitude: ${lon.toFixed(7)}`;
-    });
-}
+      // Store position data
+      document.getElementById("id_latitude").value = lat;
+      document.getElementById("id_longitude").value = lon;
+      
+      // Initialize map with obtained position
+      initMap(lat, lon, accuracy);
+      
+      // Get address information
+      reverseGeocode(lat, lon);
+    }
 
-function showError(error) {
-  let msg = "";
-  switch (error.code) {
-    case error.PERMISSION_DENIED:
-      msg = "Vous devez autoriser l'accès à votre position pour signaler un problème. Veuillez activer la géolocalisation dans les paramètres de votre navigateur et réessayer.";
-      break;
-    case error.POSITION_UNAVAILABLE:
-      msg = "Votre position est indisponible. Veuillez vérifier que votre GPS est activé et que vous êtes dans une zone avec une bonne réception.";
-      break;
-    case error.TIMEOUT:
-      msg = "La détermination de votre position a pris trop de temps. Veuillez vérifier votre connexion et réessayer.";
-      break;
-    default:
-      msg = "Une erreur s'est produite lors de la récupération de votre position. Veuillez réessayer ou utiliser un autre appareil.";
-      break;
-  }
-  alert(msg);
-}
-        </script>
+    function processPosition(position) {
+      const lat = 18.1216610; // Hardcoded for testing
+      const lon = -15.9713870; // Hardcoded for testing
+      const accuracy = position.coords.accuracy;
       
+      // Store position data
+      document.getElementById("id_latitude").value = lat;
+      document.getElementById("id_longitude").value = lon;
       
+      // Initialize map
+      initMap(lat, lon, accuracy);
+      
+      // Get address
+      reverseGeocode(lat, lon);
+      
+      // Show warning if precision is poor
+      if (accuracy > 100) {
+        alert(`Attention: La précision de votre position est de ${Math.round(accuracy)}m, ce qui est relativement imprécis. Cela peut affecter la localisation exacte du problème signalé.`);
+      }
+    }
+
+    function initMap(lat, lon, accuracy) {
+      // Create a map focused on the location with appropriate zoom level
+      const map = L.map('map', {
+        center: [lat, lon],
+        zoom: calculateZoomLevel(accuracy),
+        dragging: false,      // Disable map interaction
+        zoomControl: false,   // Disable zoom controls
+        scrollWheelZoom: false,
+        doubleClickZoom: false,
+        boxZoom: false,
+        keyboard: false,
+        touchZoom: false      // Disable all user interaction
+      });
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+      }).addTo(map);
+
+      // Add a marker (not draggable)
+      L.marker([lat, lon], { draggable: false }).addTo(map)
+        .bindPopup(`Position détectée (précision: ${Math.round(accuracy)}m)`)
+        .openPopup();
+      
+      // Show accuracy circle
+      L.circle([lat, lon], {
+        radius: accuracy,
+        color: 'blue',
+        fillColor: '#3388ff',
+        fillOpacity: 0.2
+      }).addTo(map);
+    }
+
+    function calculateZoomLevel(accuracy) {
+      // Calculate appropriate zoom level based on accuracy
+      if (accuracy < 10) return 19;        // Very accurate (< 10m)
+      else if (accuracy < 30) return 18;   // Good accuracy (10-30m)
+      else if (accuracy < 70) return 17;   // Moderate accuracy (30-70m)
+      else if (accuracy < 200) return 16;  // Poor accuracy (70-200m)
+      else return 15;                      // Very poor accuracy (> 200m)
+    }
+
+    function reverseGeocode(lat, lon) {
+      // Use Nominatim for reverse geocoding
+      const nominatimUrl = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}&accept-language=fr&zoom=18&addressdetails=1`;
+      
+      fetch(nominatimUrl)
+        .then(response => response.json())
+        .then(data => {
+          console.log("Nominatim data:", JSON.stringify(data, null, 2));
+          const displayName = data.display_name || "";
+          const addressParts = data.address || {};
+          
+          console.log("Nominatim address parts:", JSON.stringify(addressParts, null, 2));
+          
+          // Create a detailed address with precise coordinates
+          const preciseAddress = `${displayName} (${lat.toFixed(7)}, ${lon.toFixed(7)})`;
+          document.getElementById("id_location").value = preciseAddress;
+          
+          // Set municipality candidate
+          console.log("County:", addressParts.county);
+console.log("Suburb:", addressParts.suburb);
+let municipalityCandidate = addressParts.county || addressParts.suburb || addressParts.town || addressParts.city || addressParts.village || "";
+console.log("Final candidate:", municipalityCandidate);          
+          // Fallback to address parts if no direct match
+          if (!municipalityCandidate && displayName) {
+            const parts = displayName.split(',').map(part => part.trim());
+            console.log("Nominatim parts:", parts);
+            // Look for 'Ksar' in address parts
+            for (let i = 0; i < parts.length; i++) {
+              if (parts[i].toLowerCase() === 'ksar') {
+                municipalityCandidate = parts[i];
+                console.log("Municipality from parts:", municipalityCandidate);
+                break;
+              }
+            }
+            // If not found, take the third part (index 2) as it’s often Ksar
+            if (!municipalityCandidate && parts.length >= 3) {
+              municipalityCandidate = parts[2].replace(/^\d+\s+/, '');
+              console.log("Municipality from part 3:", municipalityCandidate);
+            }
+          }
+          
+          console.log("Municipality candidate:", municipalityCandidate);
+          document.getElementById("municipality_candidate").value = municipalityCandidate;
+          
+          // Fetch municipality_id
+          if (municipalityCandidate) {
+            fetchMunicipalityId(municipalityCandidate, lat, lon);
+          } else {
+            document.getElementById("municipality_id").value = "";
+            alert("Municipalité non identifiée. Les coordonnées seront utilisées.");
+          }
+        })
+        .catch(err => {
+          console.error("Erreur avec Nominatim:", err);
+          // Fall back to coordinate-only display
+          document.getElementById("id_location").value = `Latitude: ${lat.toFixed(7)}, Longitude: ${lon.toFixed(7)}`;
+          document.getElementById("municipality_id").value = "";
+          alert("Erreur lors de la récupération de l'adresse. Les coordonnées seront utilisées.");
+        });
+    }
+
+    function fetchMunicipalityId(municipalityName, lat, lon) {
+      console.log(`Fetching ID for: '${municipalityName}', lat: ${lat}, lon: ${lon}`);
+      fetch(`/get_municipality_id/?name=${encodeURIComponent(municipalityName)}&lat=${lat}&lon=${lon}`)
+        .then(response => response.json())
+        .then(data => {
+          console.log("Fetch response:", data);
+          if (data.municipality_id) {
+            document.getElementById("municipality_id").value = data.municipality_id;
+            console.log("Municipality ID set:", data.municipality_id);
+          } else {
+            console.log("Municipality not found in database");
+            document.getElementById("municipality_id").value = "";
+            alert("Municipalité non trouvée dans la base. Les coordonnées seront utilisées.");
+          }
+        })
+        .catch(err => {
+          console.error("Erreur fetch:", err);
+          document.getElementById("municipality_id").value = "";
+          alert("Erreur lors de la récupération de la municipalité. Les coordonnées seront utilisées.");
+        });
+    }
+
+    function showError(error) {
+      let msg = "";
+      switch (error.code) {
+        case error.PERMISSION_DENIED:
+          msg = "Vous devez autoriser l'accès à votre position pour signaler un problème. Veuillez activer la géolocalisation dans les paramètres de votre navigateur et réessayer.";
+          break;
+        case error.POSITION_UNAVAILABLE:
+          msg = "Votre position est indisponible. Veuillez vérifier que votre GPS est activé et que vous êtes dans une zone avec une bonne réception.";
+          break;
+        case error.TIMEOUT:
+          msg = "La détermination de votre position a pris trop de temps. Veuillez vérifier votre connexion et réessayer.";
+          break;
+        default:
+          msg = "Une erreur s'est produite lors de la récupération de votre position. Veuillez réessayer ou utiliser un autre appareil.";
+          break;
+      }
+      alert(msg);
+    }
+  </script>
 {% endblock %}

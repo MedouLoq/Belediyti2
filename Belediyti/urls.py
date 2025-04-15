@@ -47,7 +47,7 @@ urlpatterns = [
     path('complaints/submit/', views.submit_complaint, name='submit_complaint'),
     path('complaints/<uuid:pk>/', views.complaint_detail, name='complaint_detail'),
     path('complaints/', views.complaint_list, name='complaint_list'),
-    
+     path('get_municipality_id/', views.get_municipality_id, name='get_municipality_id'),
     # Profile
     path('profile/edit/', views.edit_profile, name='edit_profile'),
 
