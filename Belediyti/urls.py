@@ -15,7 +15,7 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path
+from django.urls import path, include
 from django.contrib.auth import views as auth_views 
 from Citoyen import views
 from django.shortcuts import render, redirect
@@ -23,8 +23,11 @@ from django.conf import settings
 from django.conf.urls.static import static
 urlpatterns = [
     path('admin/', admin.site.urls),
+        path("superadmin/", include("super_admin.urls")), # Added superadmin URLs 
+        path("muni_admin/", include("Muni_admin.urls")), # Added superadmin URLs 
     # Authentication
     path('register/', views.register, name='register'),
+    path('redirect/', views.redirect_user, name='redirect_user'),
     # Use your custom login view
     path('login/', views.user_login, name='login'), 
     # Use your custom logout view

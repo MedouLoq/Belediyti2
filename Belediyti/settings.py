@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
+import os # Added for MEDIA_ROOT
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -29,6 +30,7 @@ ALLOWED_HOSTS = ['127.0.0.1',
                  '192.168.163.95',
                  '192.168.163.95',
                  '192.168.163.198',
+                 '*', # Allow all hosts for now, refine for production
                  ]
 
 
@@ -41,9 +43,11 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'Citoyen',
+    'Citoyen', # Your app
     'django.contrib.humanize',
-]
+    'super_admin',
+    'Muni_admin'
+] 
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -108,7 +112,7 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'fr' # Changed to French
 
 TIME_ZONE = 'UTC'
 
@@ -116,15 +120,42 @@ USE_I18N = True
 
 USE_TZ = True
 
+# Custom User Model
 AUTH_USER_MODEL = 'Citoyen.User'
+
+# Custom Authentication Backend
+AUTHENTICATION_BACKENDS = (
+    'Citoyen.backends.PhoneOrEmailBackend', # Your custom backend
+    'django.contrib.auth.backends.ModelBackend', # Default Django backend (needed for admin login)
+)
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = 'static/'
+# Add STATIC_ROOT for collectstatic if needed for deployment
+# STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+# Media files (User uploads)
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media') # Define where media files are stored
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-LOGIN_URL='login'
+
+# Login/Logout URLs
+LOGIN_URL = 'login'
+LOGOUT_REDIRECT_URL = 'login' # Redirect to login page after logout
+LOGIN_REDIRECT_URL = 'redirect_user' # Redirect to a view that handles role-based redirection
+
+# Ensure upload directories exist (optional, good practice)
+if not os.path.exists(MEDIA_ROOT):
+    os.makedirs(MEDIA_ROOT)
+if not os.path.exists(os.path.join(MEDIA_ROOT, 'problem_photos')):
+    os.makedirs(os.path.join(MEDIA_ROOT, 'problem_photos'))
+if not os.path.exists(os.path.join(MEDIA_ROOT, 'Reclamation_fiche')):
+    os.makedirs(os.path.join(MEDIA_ROOT, 'Reclamation_fiche'))
+
+

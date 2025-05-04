@@ -1,0 +1,351 @@
+{% extends 'muni_admin/base.html' %}
+{% load static %}
+{% load i18n %}
+
+{% block title %}{% trans "Détail du Problème" %} - {{ problem.id|stringformat:"s"|slice:":8" }}{% endblock %}
+{% block header_title %}{% trans "Détail du Problème" %}{% endblock %}
+
+{% block extra_styles %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+<style>
+    #problem-map {
+        height: 350px;
+        border-radius: 0.5rem; /* rounded-lg */
+        z-index: 0; /* Ensure map is interactive */
+        background-color: #f3f4f6; /* gray-100 - Placeholder background */
+        border: 1px solid #e5e7eb; /* gray-200 */
+    }
+    .leaflet-container {
+        background: #f3f4f6; /* Match placeholder */
+    }
+    .map-error-message {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        text-align: center;
+        padding: 1rem;
+        color: #6b7280; /* gray-500 */
+        font-size: 0.875rem; /* text-sm */
+    }
+    .detail-card {
+        transition: all 0.3s ease;
+        animation: fadeInUp 0.5s ease-out forwards;
+    }
+    @keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .status-badge {
+        padding: 0.25rem 0.6rem;
+        border-radius: 9999px; /* pill shape */
+        font-size: 0.875rem; /* text-sm */
+        font-weight: 600; /* font-semibold */
+        display: inline-flex;
+        align-items: center;
+        line-height: 1;
+    }
+    .status-PENDING { background-color: #fef3c7; color: #92400e; } /* yellow-100, yellow-800 */
+    .status-IN_PROGRESS { background-color: #dbeafe; color: #1e40af; } /* blue-100, blue-800 */
+    .status-DELEGATED { background-color: #ede9fe; color: #5b21b6; } /* purple-100, purple-800 */
+    .status-RESOLVED { background-color: #d1fae5; color: #065f46; } /* green-100, green-800 */
+    .status-REJECTED { background-color: #fee2e2; color: #991b1b; } /* red-100, red-800 */
+    .status-default { background-color: #f3f4f6; color: #374151; } /* gray-100, gray-700 */
+
+    .timeline {
+        position: relative;
+        padding-left: 2rem;
+        border-left: 2px solid #e5e7eb; /* gray-200 */
+    }
+    .timeline-item {
+        position: relative;
+        margin-bottom: 1.5rem; /* mb-6 */
+    }
+    .timeline-item:last-child {
+        margin-bottom: 0;
+    }
+    .timeline-marker {
+        position: absolute;
+        left: -0.5rem; /* Adjust based on marker size */
+        top: 0.25rem; /* Adjust vertical alignment */
+        width: 1rem;
+        height: 1rem;
+        border-radius: 50%;
+        background-color: #9ca3af; /* gray-400 */
+        border: 2px solid white;
+    }
+    .timeline-item:first-child .timeline-marker {
+        background-color: #3b82f6; /* blue-500 */
+    }
+    .photo-placeholder {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 150px; /* Adjust height as needed */
+        background-color: #f9fafb; /* gray-50 */
+        border: 1px dashed #d1d5db; /* gray-300 */
+        border-radius: 0.5rem; /* rounded-lg */
+        color: #6b7280; /* gray-500 */
+        font-style: italic;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+    <div class="container mx-auto px-4 py-6">
+        <div class="mb-6">
+            <a href="{% url 'Muni_admin:problems' %}" class="text-primary-600 hover:text-primary-800 transition duration-150 ease-in-out">
+                <i class="fas fa-arrow-left mr-2"></i>{% trans "Retour à la liste" %}
+            </a>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Left Column: Details & Map -->
+            <div class="lg:col-span-2 space-y-6">
+                <!-- Problem Details Card -->
+                <div class="bg-white shadow rounded-lg p-6 detail-card">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
+                        <h2 class="text-xl font-semibold text-secondary-800 mb-2 sm:mb-0">{% trans "Problème" %} #{{ problem.id|stringformat:"s"|slice:":8" }}</h2>
+                        <span class="status-badge status-{{ problem.status|default:'default' }}">
+                            {{ problem.get_status_display }}
+                        </span>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 text-sm">
+                        <div>
+                            <p class="text-secondary-500 font-medium">{% trans "Description" %}</p>
+                            <p class="text-secondary-900">{{ problem.description }}</p>
+                        </div>
+                        <div>
+                            <p class="text-secondary-500 font-medium">{% trans "Catégorie" %}</p>
+                            <p class="text-secondary-900">{{ problem.category.name|default:"N/A" }}</p>
+                        </div>
+                        <div>
+                            <p class="text-secondary-500 font-medium">{% trans "Adresse signalée" %}</p>
+                            <p class="text-secondary-900">{{ problem.location|default:"N/A" }}</p>
+                        </div>
+                        <div>
+                            <p class="text-secondary-500 font-medium">{% trans "Municipalité" %}</p>
+                            <p class="text-secondary-900">{{ problem.municipality.name }}</p>
+                        </div>
+                        <div>
+                            <p class="text-secondary-500 font-medium">{% trans "Signalé par" %}</p>
+                            <p class="text-secondary-900">{{ problem.citizen.full_name }} ({{ problem.citizen.user.phone_number }})</p>
+                        </div>
+                        <div>
+                            <p class="text-secondary-500 font-medium">{% trans "Signalé le" %}</p>
+                            <p class="text-secondary-900">{{ problem.created_at|date:"d/m/Y H:i" }}</p>
+                        </div>
+                        <div>
+                            <p class="text-secondary-500 font-medium">{% trans "Dernière mise à jour" %}</p>
+                            <p class="text-secondary-900">{{ problem.updated_at|date:"d/m/Y H:i" }}</p>
+                        </div>
+                        <div>
+                            <p class="text-secondary-500 font-medium">{% trans "Coordonnées" %}</p>
+                            <p class="text-secondary-900">Lat: {{ problem.latitude|default:"N/A" }}, Lon: {{ problem.longitude|default:"N/A" }}</p>
+                        </div>
+                    </div>
+
+                    <!-- Photo Section -->
+                    <div class="mt-6">
+                        <p class="text-secondary-500 font-medium mb-2">{% trans "Photo" %}</p>
+                        {% if problem.photo %}
+                            <a href="{{ problem.photo.url }}" target="_blank" title="{% trans 'Voir l\'image en taille réelle' %}">
+                                <img src="{{ problem.photo.url }}" alt="{% trans 'Photo du problème' %}" 
+                                     class="max-w-full h-auto rounded-lg shadow border border-gray-200 hover:opacity-90 transition-opacity cursor-pointer">
+                            </a>
+                        {% else %}
+                            <div class="photo-placeholder">
+                                {% trans "Aucune photo associée à ce problème." %}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Map Card -->
+                <div class="bg-white shadow rounded-lg p-6 detail-card" style="animation-delay: 0.1s;">
+                    <h3 class="text-lg font-semibold text-secondary-800 mb-4">{% trans "Localisation" %}</h3>
+                    <div id="problem-map"></div>
+                </div>
+            </div>
+
+            <!-- Right Column: Status Update & History -->
+            <div class="lg:col-span-1 space-y-6">
+                <!-- Status Update Card -->
+                <div class="bg-white shadow rounded-lg p-6 detail-card" style="animation-delay: 0.2s;">
+                    <h3 class="text-lg font-semibold text-secondary-800 mb-4">{% trans "Mettre à jour le statut" %}</h3>
+                    <form method="post" action=""> {# Add action URL if different #}
+                        {% csrf_token %}
+                        <div class="mb-4">
+                            <label for="status" class="block text-sm font-medium text-secondary-700 mb-1">{% trans "Nouveau statut" %}</label>
+                            <select name="status" id="status" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 bg-white">
+                                {% for value, label in status_choices %}
+                                    <option value="{{ value }}" {% if problem.status == value %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        {# Optional: Add a comment field #}
+                        <div class="mb-4">
+                            <label for="comment" class="block text-sm font-medium text-secondary-700 mb-1">{% trans "Commentaire (Optionnel)" %}</label>
+                            <textarea name="comment" id="comment" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"></textarea>
+                        </div>
+                        <button type="submit" class="w-full px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition duration-150 ease-in-out">
+                            <i class="fas fa-save mr-2"></i> {% trans "Enregistrer" %}
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Status History Card -->
+                <div class="bg-white shadow rounded-lg p-6 detail-card" style="animation-delay: 0.3s;">
+                    <h3 class="text-lg font-semibold text-secondary-800 mb-4">{% trans "Historique des statuts" %}</h3>
+                    {% if status_logs %}
+                        <div class="timeline">
+                            {% for log in status_logs %}
+                            <div class="timeline-item">
+                                <div class="timeline-marker"></div>
+                                <div class="ml-4">
+                                    <p class="text-sm font-semibold text-secondary-900">
+                                        {% trans "Statut changé en" %} {{ log.get_new_status_display }}
+                                    </p>
+                                    <p class="text-xs text-secondary-500">
+                                        {{ log.changed_at|date:"d/m/Y H:i" }}
+                                        {% if log.changed_by %}
+                                            {% trans "par" %} {{ log.changed_by.get_full_name|default:log.changed_by.username }}
+                                        {% else %}
+                                            {% trans "par Système" %}
+                                        {% endif %}
+                                    </p>
+                                    {# Add comment display if available #}
+                                    {# {% if log.comment %}<p class="text-sm text-secondary-700 mt-1">{{ log.comment }}</p>{% endif %} #}
+                                </div>
+                            </div>
+                            {% endfor %}
+                            <!-- Initial status -->
+                             <div class="timeline-item">
+                                <div class="timeline-marker"></div>
+                                <div class="ml-4">
+                                    <p class="text-sm font-semibold text-secondary-900">
+                                        {% trans "Problème signalé" %}
+                                    </p>
+                                    <p class="text-xs text-secondary-500">
+                                        {{ problem.created_at|date:"d/m/Y H:i" }} {% trans "par" %} {{ problem.citizen.full_name }}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    {% else %}
+                        <p class="text-sm text-secondary-600">{% trans "Aucun historique de statut disponible." %}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const mapElement = document.getElementById('problem-map');
+    const latStr = "{{ problem.latitude|default:'' }}";
+    const lonStr = "{{ problem.longitude|default:'' }}";
+    const mapboxToken = "pk.eyJ1IjoibG9xbWVkb3UiLCJhIjoiY205ZnltODdnMDcwajJqc2NpdnpvcGliZiJ9.VD0biSZFWDkxdsxt8ksEKw";
+    let lat = null;
+    let lon = null;
+
+    // Try parsing coordinates, handle potential errors and convert commas to periods
+    try {
+        if (latStr) {
+            // Replace commas with periods before parsing
+            const normalizedLatStr = latStr.replace(',', '.');
+            lat = parseFloat(normalizedLatStr);
+        }
+        if (lonStr) {
+            // Replace commas with periods before parsing
+            const normalizedLonStr = lonStr.replace(',', '.');
+            lon = parseFloat(normalizedLonStr);
+        }
+    } catch (e) {
+        console.error("Error parsing coordinates:", e);
+    }
+
+    // Enhanced validation for coordinates
+    const isValidCoords = typeof lat === 'number' && !isNaN(lat) && 
+                          typeof lon === 'number' && !isNaN(lon) &&
+                          lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180;
+
+    function displayMapError(message) {
+        mapElement.innerHTML = 
+            `<div class="map-error-message">${message}</div>`;
+    }
+
+    // Debug coordinates to console (you can remove this after fixing)
+    console.log("Parsed coordinates:", { lat, lon, isValid: isValidCoords });
+
+    if (!mapboxToken) {
+        console.error("Mapbox token is missing!");
+        displayMapError("{% trans 'Configuration de la carte manquante (token).' %}");
+        return;
+    }
+
+    if (mapElement && isValidCoords) {
+        try {
+            // Create map centered on the coordinates
+            const map = L.map(mapElement).setView([lat, lon], 15);
+            let tileLayer = null;
+            let tileErrorCount = 0;
+            const MAX_TILE_ERRORS = 5;
+
+            // Add Mapbox Streets tile layer
+            tileLayer = L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token={accessToken}', {
+                attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
+                maxZoom: 18,
+                id: 'mapbox/streets-v11',
+                tileSize: 512,
+                zoomOffset: -1,
+                accessToken: mapboxToken
+            });
+
+            tileLayer.on('tileerror', function(event) {
+                tileErrorCount++;
+                console.warn(`Leaflet tileerror event (${tileErrorCount}/${MAX_TILE_ERRORS}):`, event.tile.src);
+                if (tileErrorCount >= MAX_TILE_ERRORS) {
+                    map.removeLayer(tileLayer);
+                    displayMapError("{% trans 'Impossible de charger les tuiles de la carte. Vérifiez votre connexion réseau ou la validité du token Mapbox.' %}");
+                }
+            });
+
+            tileLayer.addTo(map);
+
+            // Add marker at the precise location
+            const marker = L.marker([lat, lon]).addTo(map)
+                .bindPopup(`<b>{% trans "Problème signalé ici" %}</b><br>{{ problem.description|truncatechars:50|escapejs }}`);
+            
+            // Add a small circle to show the exact point - helpful for debugging
+            L.circle([lat, lon], {
+                color: 'red',
+                fillColor: '#f03',
+                fillOpacity: 0.2,
+                radius: 50  // 50 meters radius
+            }).addTo(map);
+
+            // Add event listener to show coordinates on map click (for debugging)
+            map.on('click', function(e) {
+                console.log("Clicked coordinates:", e.latlng.lat, e.latlng.lng);
+                L.popup()
+                    .setLatLng(e.latlng)
+                    .setContent(`Lat: ${e.latlng.lat.toFixed(6)}<br>Lon: ${e.latlng.lng.toFixed(6)}`)
+                    .openOn(map);
+            });
+
+        } catch (e) {
+            console.error("Error initializing Leaflet map:", e);
+            displayMapError("{% trans 'Erreur lors de linitialisation de la carte.' %}");
+        }
+    } else if (mapElement) {
+        displayMapError("{% trans 'Coordonnées non disponibles ou invalides pour afficher la carte.' %}");
+    }
+});
+</script>
+{% endblock %}

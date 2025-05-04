@@ -1,0 +1,337 @@
+
+{% extends 'super_admin/base.html' %}
+{% load static %}
+{% load i18n %}
+
+{% block title %}{% trans "Gestion des Catégories" %}{% endblock %}
+{% block header_title %}{% trans "Gestion des Catégories" %}{% endblock %}
+
+{% block content %}
+    <div class="bg-white shadow rounded-lg p-6">
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-2xl font-semibold text-secondary-800">{% trans "Gestion des Catégories" %}</h1>
+            <button type="button" class="btn-create-category bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg transition-colors duration-300 flex items-center">
+                <i class="fas fa-plus-circle mr-2"></i> {% trans "Ajouter une catégorie" %}
+            </button>
+        </div>
+
+        <div id="category-list-container" class="overflow-x-auto">
+            {% if categories %}
+                <table class="min-w-full bg-white border border-gray-200 rounded-lg overflow-hidden">
+                    <thead class="bg-gray-100">
+                    <tr>
+                        <th class="py-3 px-6 text-left text-xs font-medium text-secondary-700 uppercase tracking-wider">{% trans "Nom" %}</th>
+                        <th class="py-3 px-6 text-left text-xs font-medium text-secondary-700 uppercase tracking-wider">{% trans "Description" %}</th>
+                        <th class="py-3 px-6 text-left text-xs font-medium text-secondary-700 uppercase tracking-wider">{% trans "Actions" %}</th>
+                    </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200">
+                    {% for category in categories %}
+                        <tr data-category-id="{{ category.id }}" class="hover:bg-gray-50 transition-colors duration-150">
+                            <td class="py-3 px-6 text-sm font-medium text-secondary-900">{{ category.name }}</td>
+                            <td class="py-3 px-6 text-sm text-secondary-700">{{ category.description }}</td>
+                            <td class="py-3 px-6 text-sm">
+                                <div class="flex space-x-2">
+                                    <button type="button" class="btn-update-category bg-green-50 hover:bg-green-100 text-green-700 p-2 rounded transition-colors duration-200"
+                                            data-category-id="{{ category.id }}"
+                                            title="{% trans 'Modifier' %}">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button type="button" class="btn-delete-category bg-red-50 hover:bg-red-100 text-red-700 p-2 rounded transition-colors duration-200"
+                                            data-category-id="{{ category.id }}"
+                                            title="{% trans 'Supprimer' %}">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <div class="empty-table-message bg-gray-50 p-8 text-center rounded-lg">
+                    <i class="fas fa-tags text-gray-300 text-5xl mb-4"></i>
+                    <p class="text-secondary-600">{% trans "Aucune catégorie trouvée." %}</p>
+                    <p class="text-secondary-500 text-sm mt-2">{% trans "Cliquez sur 'Ajouter une catégorie' pour commencer." %}</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Category Modal -->
+    <div class="modal fade" id="categoryModal" tabindex="-1" aria-labelledby="categoryModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-lg overflow-hidden">
+                <div class="modal-header bg-primary-50 border-b border-primary-100">
+                    <h5 class="modal-title text-primary-700" id="categoryModalLabel">{% trans "Catégorie" %}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <!-- Static Form in Modal -->
+                    <form id="categoryForm" method="post">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="name" class="form-label">{% trans "Nom" %}</label>
+                            <input type="text" class="form-control" id="category-name" name="name" required>
+                            <div class="invalid-feedback"></div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="description" class="form-label">{% trans "Description" %}</label>
+                            <textarea class="form-control" id="category-description" name="description"></textarea>
+                        </div>
+                        <input type="hidden" name="category_id" id="categoryId">
+                     
+                      
+                        <div class="mt-4 d-flex justify-content-end">
+                            <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal">{% trans "Annuler" %}</button>
+                            <button type="submit" class="btn btn-primary">{% trans "Enregistrer" %}</button>
+                        </div>
+                    </form>
+                     <div id="confirmationDelete" style="display:none">
+                         <h4>Etes-vous sure de vouloire supprimer cet enregistrement ?</h4>
+                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{% trans "Annuler" %}</button>
+                         <button type="button" id="confirmDelete" class="btn btn-danger">Confirmer</button>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_scripts %}
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+     function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                // Does this cookie string begin with the name we want?
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+       $.ajaxSetup({
+            beforeSend: function(xhr, settings) {
+                if (!(/^http:.*/.test(settings.url) || /^https:.*/.test(settings.url))) {
+                    xhr.setRequestHeader("X-CSRFToken", getCookie('csrftoken'));
+                }
+            }
+        });
+
+
+    $(document).ready(function () {
+           let currentCategory = null;
+
+        function updateCategoryTable(category) {
+
+           const row = $(`tr[data-category-id="${category.id}"]`)
+             if (row.length>0) {
+                row.find('td:eq(0)').text(category.name);
+                row.find('td:eq(1)').text(category.description);
+            } else {
+
+                  $('#category-list-container tbody').prepend(`
+                <tr data-category-id="${category.id}" class="hover:bg-gray-50 transition-colors duration-150">
+                    <td class="py-3 px-6 text-sm font-medium text-secondary-900">${category.name}</td>
+                    <td class="py-3 px-6 text-sm text-secondary-700">${category.description}</td>
+                    <td class="py-3 px-6 text-sm">
+                        <div class="flex space-x-2">
+                            <button type="button" class="btn-update-category bg-green-50 hover:bg-green-100 text-green-700 p-2 rounded transition-colors duration-200"
+                                    data-category-id="${category.id}"
+                                    title="{% trans 'Modifier' %}">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button type="button" class="btn-delete-category bg-red-50 hover:bg-red-100 text-red-700 p-2 rounded transition-colors duration-200"
+                                    data-category-id="${category.id}"
+                                    title="{% trans 'Supprimer' %}">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+             `);
+             }
+
+        }
+
+
+
+            $('#categoryModal').on('hide.bs.modal', function () {
+                // Reset the form on modal close
+                $('#categoryForm')[0].reset(); // Reset form values
+
+                 // Hide delete elements, show form elements
+
+                $('#categoryForm').show();
+                $('#confirmationDelete').hide();
+
+              //remove error feedback
+               $('#categoryForm .form-control').removeClass('is-invalid');
+                $('#categoryForm .invalid-feedback').text('');
+
+
+           });
+
+
+           function loadModal(element, modalTitle) {
+                $('#categoryModalLabel').text(modalTitle);
+                const categoryId = element.data('category-id');
+               currentCategory  = categoryId
+
+                $('#categoryForm')[0].reset(); // Reset form values
+                $('#categoryForm .form-control').removeClass('is-invalid'); // Reset visual feedback
+                $('#categoryForm .invalid-feedback').text('');
+
+                $('#categoryId').val(categoryId);
+
+
+               if ($(element).hasClass('btn-update-category')) { //Check type button clicked 
+                    $.ajax({
+                         url: `/superadmin/categories/detail/${categoryId}/`, //update link name 
+                        type: 'GET',
+                         dataType: 'json',
+                        success: function(data) {
+                            // Prefill the form for edit
+
+
+                            $('#category-name').val(data.name);
+                            $('#category-description').val(data.description);
+
+                             $('#categoryModal').modal('show');
+                            $('#categoryForm').attr('action', `/superadmin/categories/update/${categoryId}/`);
+
+
+                        },
+                         error: function() {
+                             alert('There was an issue retrieving the category data.');
+                         }
+
+                    });
+
+                } else {
+
+                      $('#categoryModal').modal('show'); // show for create
+                       $('#categoryForm').attr('action', "{% url 'superadmin:create_category' %}");
+                     $("#categoryForm").show()
+
+                }
+            }
+        // Event handler for "Add Category" button
+        $('.btn-create-category').click(function() {
+            loadModal($(this), "{% trans 'Ajouter une catégorie' %}");
+
+        });
+
+        // Event handler for table entry edit click
+         $('#category-list-container').on('click', '.btn-update-category', function(e) {
+            loadModal($(this), "{% trans 'Modifier une catégorie' %}");
+
+
+
+        });
+         // Event handler for "Add Category" button
+        $('.btn-create-category').click(function() {
+            loadModal($(this), "{% trans 'Ajouter une catégorie' %}");
+              $('#categoryForm').attr('action', "{% url 'superadmin:create_category' %}");//update path dispatcher for view name 
+        });
+
+        // Event handler for table entry edit click
+         $('#category-list-container').on('click', '.btn-update-category', function(e) {
+            loadModal($(this), "{% trans 'Modifier une catégorie' %}");
+             const categoryId = $(this).data('category-id')
+             $('#categoryForm').attr('action', `/superadmin/categories/update/${categoryId}/`); //update dispatcher for view path 
+
+        });
+        $('#category-list-container').on('click', '.btn-delete-category', function(e) {
+             $('#categoryForm').hide()
+             $('#confirmationDelete').show()
+             $('#categoryModalLabel').text("{% trans 'Supprimer la catégorie' %}");
+             currentCategory = $(this).data('category-id');
+
+             $('#categoryModal').modal('show');
+
+        });
+
+         $("#confirmDelete").click(function() {
+             deleteElement();
+
+        });
+
+        function deleteElement() {
+            const categoryId =  currentCategory
+
+
+            $.ajax({
+                url: `/superadmin/categories/delete/${categoryId}/`, //update delete path 
+                type: 'POST',
+
+                dataType: 'json',
+                success: function(response) {
+                     $('#categoryModal').modal('hide');
+                       $(`tr[data-category-id="${categoryId}"]`).remove();
+
+                },
+                error: function(error) {
+                    alert('Error deleting category.');
+                }
+            });
+        }
+
+
+       $('#categoryForm').submit(function(e) {
+            e.preventDefault(); // Prevent the default form submission
+            const form = $(this);
+            const url = form.attr('action');
+
+
+
+            // Clear previous errors
+            form.find('.form-control').removeClass('is-invalid');
+            form.find('.invalid-feedback').text('');
+
+            $.ajax({
+                url: url,
+                type: 'POST',
+                data: form.serialize(),
+                dataType: 'json',
+                success: function(response) {
+                    if (response.success) {
+
+                        $('#categoryModal').modal('hide');
+                        updateCategoryTable(response.category)
+
+
+
+                    } else {
+                        // Handle errors - Display invalid feedback
+
+
+                         for (const field in response.errors) {
+                            const input = form.find(`[name="${field}"]`);
+                            input.addClass('is-invalid');
+                             input.next('.invalid-feedback').text(response.errors[field].join(', '));
+
+
+
+                         }
+
+
+                    }
+                },
+                error: function(jqXHR, textStatus, errorThrown) {
+
+
+                 }
+            });
+        });
+
+    });
+    </script>
+{% endblock %}

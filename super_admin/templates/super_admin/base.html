@@ -1,0 +1,627 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}SuperAdmin Portal{% endblock %}</title>
+    
+    <!-- Favicon -->
+    <link rel="shortcut icon" href="{% static 'img/favicon.ico' %}" type="image/x-icon">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            200: '#bae6fd',
+                            300: '#7dd3fc',
+                            400: '#38bdf8',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
+                            700: '#0369a1',
+                            800: '#075985',
+                            900: '#0c4a6e',
+                        },
+                        secondary: {
+                            50: '#f8fafc',
+                            100: '#f1f5f9',
+                            200: '#e2e8f0',
+                            300: '#cbd5e1',
+                            400: '#94a3b8',
+                            500: '#64748b',
+                            600: '#475569',
+                            700: '#334155',
+                            800: '#1e293b',
+                            900: '#0f172a',
+                        },
+                        success: {
+                            50: '#ecfdf5',
+                            500: '#10b981',
+                            700: '#047857',
+                        },
+                        warning: {
+                            50: '#fffbeb',
+                            500: '#f59e0b',
+                            700: '#b45309',
+                        },
+                        danger: {
+                            50: '#fef2f2',
+                            500: '#ef4444',
+                            700: '#b91c1c',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Poppins', 'sans-serif'],
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.5s ease-in-out',
+                        'slide-in': 'slideIn 0.5s ease-in-out',
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0' },
+                            '100%': { opacity: '1' },
+                        },
+                        slideIn: {
+                            '0%': { transform: 'translateY(10px)', opacity: '0' },
+                            '100%': { transform: 'translateY(0)', opacity: '1' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@1.9.2"></script>
+    
+    <!-- ApexCharts -->
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    
+    <!-- Custom CSS -->
+    <style>
+        /* Animations */
+        @keyframes slideInRight {
+            from {
+                transform: translateX(30px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        @keyframes fadeInUp {
+            from {
+                transform: translateY(20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+        
+
+        
+        /* Staggered animation delays */
+        .stagger-0 { animation-delay: 0s; }
+        .stagger-1 { animation-delay: 0.1s; }
+        .stagger-2 { animation-delay: 0.2s; }
+        .stagger-3 { animation-delay: 0.3s; }
+        .stagger-4 { animation-delay: 0.4s; }
+        
+        /* Smooth transitions */
+        .nav-link, .btn, .card {
+            transition: all 0.3s ease;
+        }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 10px;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #94a3b8;
+            border-radius: 10px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+        
+        /* Active nav item indicator */
+        .nav-active {
+            position: relative;
+        }
+        
+        .nav-active::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100%;
+            width: 4px;
+            background: #0ea5e9;
+            border-radius: 0 4px 4px 0;
+        }
+        
+        /* Card hover effects */
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        
+        /* Modal animation */
+        .modal-overlay {
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .modal-overlay.active {
+            opacity: 1;
+        }
+        
+        .modal-container {
+            transform: scale(0.9);
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+        
+        .modal-container.active {
+            transform: scale(1);
+            opacity: 1;
+        }
+        
+        /* Loader */
+        .loader {
+            border-top-color: #0ea5e9;
+            animation: spinner 0.6s linear infinite;
+        }
+        
+        @keyframes spinner {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+        
+        /* Toast notifications */
+        .toast {
+            position: fixed;
+            right: 20px;
+            bottom: -100px;
+            transition: all 0.5s ease;
+            z-index: 9999;
+        }
+        
+        .toast.show {
+            bottom: 20px;
+        }
+
+        /* Badge pulse animation */
+        @keyframes badgePulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+            }
+            70% {
+                box-shadow: 0 0 0 6px rgba(239, 68, 68, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+            }
+        }
+        
+        .pulse-badge {
+            animation: badgePulse 2s infinite;
+        }
+
+        /* Shimmer loading effect */
+        .shimmer {
+            background: linear-gradient(90deg, #f0f0f0 25%, #f8f8f8 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+        }
+        
+        @keyframes shimmer {
+            to {
+                background-position: -200% 0;
+            }
+        }
+        
+        /* Floating label for form inputs */
+        .floating-label {
+            position: relative;
+        }
+        
+        .floating-label input:focus + label,
+        .floating-label input:not(:placeholder-shown) + label {
+            transform: translateY(-20px) scale(0.85);
+            color: #0ea5e9;
+        }
+        
+        .floating-label label {
+            position: absolute;
+            left: 12px;
+            top: 12px;
+            transition: all 0.2s ease;
+            pointer-events: none;
+            transform-origin: left top;
+        }
+    </style>
+    
+    {% block extra_styles %}{% endblock %}
+</head>
+<body class="font-sans bg-gray-50 text-secondary-800 antialiased">
+    <div class="min-h-screen flex flex-col">
+        <!-- Mobile Menu Toggle -->
+        <div class="lg:hidden fixed top-4 left-4 z-50">
+            <button id="mobile-menu-toggle" class="bg-white p-2 rounded-lg shadow-md">
+                <i class="fas fa-bars text-secondary-800"></i>
+            </button>
+        </div>
+        
+        <!-- Sidebar Navigation -->
+        <aside id="sidebar" class="fixed inset-y-0 left-0 z-40 w-64 bg-white shadow-lg transform -translate-x-full lg:translate-x-0 transition-transform duration-300 ease-in-out">
+            <div class="h-full flex flex-col">
+                <!-- Logo & Brand -->
+                <div class="p-4 flex items-center justify-center border-b border-gray-200">
+                    <div class="flex items-center space-x-2">
+                        <div class="h-10 w-10 bg-primary-600 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-city text-white text-xl"></i>
+                        </div>
+                        <div>
+                            <h1 class="font-bold text-xl text-secondary-900">Belediyti</h1>
+                            <p class="text-xs text-secondary-500">SuperAdmin Portal</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Navigation Links -->
+                <nav class="flex-1 py-4 px-2 overflow-y-auto">
+                    <ul class="space-y-1">
+                        <li class="px-2 py-1 stagger-0 opacity-0 animate-slide-in-right">
+                            <a href="{% url 'superadmin:superadmin_home' %}" class="flex items-center px-4 py-2.5 text-secondary-700 rounded-lg hover:bg-primary-50 hover:text-primary-700 group {% if request.resolver_match.url_name == 'dashboard' %}bg-primary-50 text-primary-700 nav-active{% endif %}">
+                                <i class="fas fa-gauge-high w-5 h-5 mr-3 text-secondary-400 group-hover:text-primary-600 {% if request.resolver_match.url_name == 'dashboard' %}text-primary-600{% endif %}"></i>
+                                <span>Tableau de bord</span>
+                            </a>
+                        </li>
+                        
+                        <li class="px-2 py-1 stagger-1 opacity-0 animate-slide-in-right">
+                            <a href="{% url 'superadmin:municipality_list' %}" class="flex items-center px-4 py-2.5 text-secondary-700 rounded-lg hover:bg-primary-50 hover:text-primary-700 group {% if request.resolver_match.url_name == 'municipalities' %}bg-primary-50 text-primary-700 nav-active{% endif %}">
+                                <i class="fas fa-building w-5 h-5 mr-3 text-secondary-400 group-hover:text-primary-600 {% if request.resolver_match.url_name == 'municipalities' %}text-primary-600{% endif %}"></i>
+                                <span>Municipalités</span>
+                            </a>
+                        </li>
+                        
+                        <li class="px-2 py-1 stagger-2 opacity-0 animate-slide-in-right">
+                            <a href="{% url 'superadmin:category_list' %}" class="flex items-center px-4 py-2.5 text-secondary-700 rounded-lg hover:bg-primary-50 hover:text-primary-700 group {% if request.resolver_match.url_name == 'categories' %}bg-primary-50 text-primary-700 nav-active{% endif %}">
+                                <i class="fas fa-tags w-5 h-5 mr-3 text-secondary-400 group-hover:text-primary-600 {% if request.resolver_match.url_name == 'categories' %}text-primary-600{% endif %}"></i>
+                                <span>Catégories</span>
+                            </a>
+                        </li>
+                        
+                        <li class="px-2 py-1 mt-6 text-xs font-semibold text-secondary-400 uppercase stagger-3 opacity-0 animate-slide-in-right">
+                            Utilisateurs
+                        </li>
+                        
+                        <li class="px-2 py-1 stagger-3 opacity-0 animate-slide-in-right">
+                            <a href="{% url 'superadmin:admin_users' %}" class="flex items-center px-4 py-2.5 text-secondary-700 rounded-lg hover:bg-primary-50 hover:text-primary-700 group {% if request.resolver_match.url_name == 'admin_users' %}bg-primary-50 text-primary-700 nav-active{% endif %}">
+                                <i class="fas fa-user-shield w-5 h-5 mr-3 text-secondary-400 group-hover:text-primary-600 {% if request.resolver_match.url_name == 'admin_users' %}text-primary-600{% endif %}"></i>
+                                <span>Administrateurs</span>
+                            </a>
+                        </li>
+                        
+                        <li class="px-2 py-1 stagger-4 opacity-0 animate-slide-in-right">
+                            <a href="{% url 'superadmin:citizen_users' %}" class="flex items-center px-4 py-2.5 text-secondary-700 rounded-lg hover:bg-primary-50 hover:text-primary-700 group {% if request.resolver_match.url_name == 'citizen_users' %}bg-primary-50 text-primary-700 nav-active{% endif %}">
+                                <i class="fas fa-users w-5 h-5 mr-3 text-secondary-400 group-hover:text-primary-600 {% if request.resolver_match.url_name == 'citizen_users' %}text-primary-600{% endif %}"></i>
+                                <span>Citoyens</span>
+                            </a>
+                        </li>
+                        
+                     
+
+                        <!-- System section -->
+                        <li class="px-2 py-1 mt-6 text-xs font-semibold text-secondary-400 uppercase stagger-4 opacity-0 animate-slide-in-right">
+                            Système
+                        </li>
+                        
+                        <li class="px-2 py-1 stagger-4 opacity-0 animate-slide-in-right">
+                            <a href="" class="flex items-center px-4 py-2.5 text-secondary-700 rounded-lg hover:bg-primary-50 hover:text-primary-700 group {% if request.resolver_match.url_name == 'settings' %}bg-primary-50 text-primary-700 nav-active{% endif %}">
+                                <i class="fas fa-gear w-5 h-5 mr-3 text-secondary-400 group-hover:text-primary-600 {% if request.resolver_match.url_name == 'settings' %}text-primary-600{% endif %}"></i>
+                                <span>Paramètres</span>
+                            </a>
+                        </li>
+                        
+                        <li class="px-2 py-1 stagger-4 opacity-0 animate-slide-in-right">
+                            <a href="" class="flex items-center px-4 py-2.5 text-secondary-700 rounded-lg hover:bg-primary-50 hover:text-primary-700 group {% if request.resolver_match.url_name == 'logs' %}bg-primary-50 text-primary-700 nav-active{% endif %}">
+                                <i class="fas fa-clipboard-list w-5 h-5 mr-3 text-secondary-400 group-hover:text-primary-600 {% if request.resolver_match.url_name == 'logs' %}text-primary-600{% endif %}"></i>
+                                <span>Journaux d'activité</span>
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+                
+                <!-- User Menu -->
+                <div class="p-4 border-t border-gray-200">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <div class="h-10 w-10 rounded-full bg-primary-600 flex items-center justify-center text-white font-semibold">
+                                {{ request.user.username|slice:":1"|upper }}
+                            </div>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm font-medium text-secondary-900">{{ request.user.username }}</p>
+                            <p class="text-xs text-secondary-500">Super Administrateur</p>
+                        </div>
+                        <div class="ml-auto">
+                            <div class="dropdown relative">
+                                <button class="p-1 text-secondary-400 hover:text-secondary-700 focus:outline-none" id="user-menu-button">
+                                    <i class="fas fa-ellipsis-vertical"></i>
+                                </button>
+                                <div class="dropdown-menu hidden absolute right-0 bottom-full mb-2 w-48 bg-white rounded-lg shadow-lg py-1 text-sm text-secondary-700 z-50">
+                                    <a href="" class="block px-4 py-2 hover:bg-primary-50 hover:text-primary-600">
+                                        <i class="fas fa-user-circle mr-2"></i> Mon profil
+                                    </a>
+                                    <a href="" class="block px-4 py-2 hover:bg-primary-50 hover:text-primary-600">
+                                        <i class="fas fa-cog mr-2"></i> Paramètres
+                                    </a>
+                                    <div class="border-t border-gray-100 my-1"></div>
+                                    <a href="{% url 'logout' %}" class="block px-4 py-2 hover:bg-danger-50 hover:text-danger-600">
+                                        <i class="fas fa-sign-out-alt mr-2"></i> Déconnexion
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+        
+        <!-- Main Content -->
+        <main class="lg:ml-64 flex-1 flex flex-col">
+            <!-- Top Header -->
+            <header class="bg-white shadow-sm z-10">
+                <div class="max-w-full mx-auto px-4 sm:px-6">
+                    <div class="flex justify-between items-center py-4">
+                        <div class="flex items-center space-x-4">
+                            <h2 class="text-2xl font-semibold text-secondary-900">{% block header_title %}Dashboard{% endblock %}</h2>
+                            <nav class="hidden sm:flex">
+                                <ol class="flex items-center space-x-2 text-sm text-secondary-500">
+                                    <li>
+                                        <a href="" class="hover:text-primary-600">
+                                            <i class="fas fa-home"></i>
+                                        </a>
+                                    </li>
+                                    {% block breadcrumbs %}
+                                    <li class="flex items-center">
+                                        <i class="fas fa-chevron-right text-xs mx-2"></i>
+                                        <span>Dashboard</span>
+                                    </li>
+                                    {% endblock %}
+                                </ol>
+                            </nav>
+                        </div>
+                        
+                        <div class="flex items-center space-x-4">
+                            <!-- Search -->
+                            <div class="relative hidden sm:block">
+                                <input type="text" placeholder="Rechercher..." class="w-64 bg-gray-100 rounded-lg py-2 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:bg-white">
+                                <i class="fas fa-search absolute left-3 top-3 text-secondary-400"></i>
+                            </div>
+                            
+                            <!-- Notifications -->
+                            <div class="relative">
+                                <button class="p-2 rounded-full hover:bg-gray-100 focus:outline-none relative" id="notifications-button">
+                                    <i class="fas fa-bell text-secondary-600"></i>
+                                    <span class="absolute top-0 right-0 h-4 w-4 bg-danger-500 rounded-full text-xs text-white flex items-center justify-center pulse-badge">3</span>
+                                </button>
+                                
+                                <!-- Notifications Dropdown -->
+                                <div class="notifications-dropdown hidden absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg py-2 z-50">
+                                    <div class="px-4 py-2 border-b border-gray-100 flex justify-between items-center">
+                                        <h3 class="font-semibold text-secondary-900">Notifications</h3>
+                                        <a href="#" class="text-xs text-primary-600 hover:text-primary-800">Tout marquer comme lu</a>
+                                    </div>
+                                    <div class="max-h-80 overflow-y-auto">
+                                        <a href="#" class="block px-4 py-3 hover:bg-gray-50 border-l-4 border-primary-500">
+                                            <div class="flex items-start">
+                                                <div class="flex-shrink-0 bg-primary-100 rounded-full p-2">
+                                                    <i class="fas fa-user-plus text-primary-600"></i>
+                                                </div>
+                                                <div class="ml-3">
+                                                    <p class="text-sm font-medium text-secondary-900">Nouvel administrateur créé</p>
+                                                    <p class="text-xs text-secondary-500">Il y a 5 minutes</p>
+                                                </div>
+                                            </div>
+                                        </a>
+                                        <a href="#" class="block px-4 py-3 hover:bg-gray-50">
+                                            <div class="flex items-start">
+                                                <div class="flex-shrink-0 bg-warning-100 rounded-full p-2">
+                                                    <i class="fas fa-triangle-exclamation text-warning-600"></i>
+                                                </div>
+                                                <div class="ml-3">
+                                                    <p class="text-sm font-medium text-secondary-900">5 nouveaux problèmes signalés</p>
+                                                    <p class="text-xs text-secondary-500">Il y a 2 heures</p>
+                                                </div>
+                                            </div>
+                                        </a>
+                                        <a href="#" class="block px-4 py-3 hover:bg-gray-50">
+                                            <div class="flex items-start">
+                                                <div class="flex-shrink-0 bg-success-100 rounded-full p-2">
+                                                    <i class="fas fa-check text-success-600"></i>
+                                                </div>
+                                                <div class="ml-3">
+                                                    <p class="text-sm font-medium text-secondary-900">Mise à jour système réussie</p>
+                                                    <p class="text-xs text-secondary-500">Hier</p>
+                                                </div>
+                                            </div>
+                                        </a>
+                                    </div>
+                                    <div class="px-4 py-2 border-t border-gray-100">
+                                        <a href="" class="text-center block text-sm text-primary-600 hover:text-primary-800">
+                                            Voir toutes les notifications
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Help -->
+                            <button class="p-2 rounded-full hover:bg-gray-100 focus:outline-none" id="help-button">
+                                <i class="fas fa-question-circle text-secondary-600"></i>
+                            </button>
+
+                            <!-- Theme Toggle -->
+                            <button class="p-2 rounded-full hover:bg-gray-100 focus:outline-none" id="theme-toggle">
+                                <i class="fas fa-moon text-secondary-600 dark:hidden"></i>
+                                <i class="fas fa-sun text-secondary-600 hidden dark:block"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </header>
+            
+            <!-- Page Content -->
+            <div class="flex-1 p-4 sm:p-6 md:p-8 animate-fade-in-up">
+                {% if messages %}
+                    <div class="mb-6">
+                        {% for message in messages %}
+                            <div class="{% if message.tags == 'success' %}bg-success-50 border-success-500 text-success-700{% elif message.tags == 'error' %}bg-danger-50 border-danger-500 text-danger-700{% elif message.tags == 'warning' %}bg-warning-50 border-warning-500 text-warning-700{% else %}bg-blue-50 border-blue-500 text-blue-700{% endif %} px-4 py-3 rounded relative border-l-4" role="alert">
+                                <span class="block sm:inline">{{ message }}</span>
+                                <button type="button" class="absolute top-0 bottom-0 right-0 px-4 py-3 alert-close">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+                
+                {% block content %}
+                <div class="bg-white shadow rounded-lg p-6">
+                    <h2 class="text-xl font-semibold mb-4">Contenu par défaut</h2>
+                    <p>Remplacez ce contenu dans vos templates enfants.</p>
+                </div>
+                {% endblock %}
+            </div>
+            
+            <!-- Footer -->
+            <footer class="bg-white shadow-inner px-4 py-4 mt-auto">
+                <div class="flex flex-col sm:flex-row justify-between items-center">
+                    <div class="text-sm text-secondary-500">
+                        &copy; {% now "Y" %} Belediyti. Tous droits réservés.
+                    </div>
+                    <div class="text-sm text-secondary-500 sm:ml-4 sm:mt-0 mt-2">
+                        Made with <i class="fas fa-heart text-danger-500"></i> By FST students
+                    </div>
+                </div>
+            </footer>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <div id="modal-container"></div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js" integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <!-- Bootstrap 5 JavaScript (Bundle with Popper) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/handlebars@latest/dist/handlebars.js"></script>
+    <script>
+        // Mobile Menu Toggle
+        const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
+        const sidebar = document.getElementById('sidebar');
+
+        mobileMenuToggle.addEventListener('click', () => {
+            sidebar.classList.toggle('-translate-x-full');
+            sidebar.classList.toggle('translate-x-0');
+        });
+
+        // Alert Close Button
+        const alertCloseButtons = document.querySelectorAll('.alert-close');
+        alertCloseButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                button.closest('.alert').remove();
+            });
+        });
+
+
+        // User Menu Dropdown
+        const userMenuButton = document.getElementById('user-menu-button');
+        const userMenuDropdown = userMenuButton.nextElementSibling;
+
+        userMenuButton.addEventListener('click', () => {
+            userMenuDropdown.classList.toggle('hidden');
+        });
+
+
+        // Notifications Dropdown
+        const notificationsButton = document.getElementById('notifications-button');
+        const notificationsDropdown = notificationsButton.nextElementSibling;
+
+        notificationsButton.addEventListener('click', () => {
+            notificationsDropdown.classList.toggle('hidden');
+        });
+
+
+        // Theme Toggle
+        const themeToggle = document.getElementById('theme-toggle');
+        const body = document.body;
+
+        themeToggle.addEventListener('click', () => {
+            body.classList.toggle('dark');
+
+            if (body.classList.contains('dark')) {
+                localStorage.setItem('theme', 'dark');
+            } else {
+                localStorage.setItem('theme', 'light');
+            }
+        });
+
+          // Check for saved theme preference
+        if (localStorage.getItem('theme') === 'dark') {
+            body.classList.add('dark');
+        } else if (localStorage.getItem('theme') === 'light') {
+          body.classList.remove('dark');
+        }
+
+        // Add animation to sidebar links on load
+        const sidebarLinks = document.querySelectorAll('#sidebar nav ul li');
+        
+        window.addEventListener('load', () => {
+            sidebarLinks.forEach(link => {
+                link.classList.remove('opacity-0');
+            });
+        });
+
+    </script>
+
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>

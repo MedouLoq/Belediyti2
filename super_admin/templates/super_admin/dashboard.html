@@ -1,0 +1,246 @@
+{% extends 'super_admin/base.html' %}
+{% load static %}
+{% load i18n %}
+{% block title %}{% trans "Tableau de Bord SuperAdmin" %}{% endblock %}
+{% block header_title %}{% trans "Tableau de Bord SuperAdmin" %}{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+    <!-- Card: Total Citizens -->
+    <div class="bg-white shadow rounded-lg p-4 flex items-center justify-between">
+        <div>
+            <p class="text-sm font-medium text-secondary-500">{% trans "Total Citoyens" %}</p>
+            <p class="text-2xl font-semibold text-secondary-900">{{ total_citizens }}</p>
+        </div>
+        <div class="text-primary-600">
+            <i class="fas fa-users fa-3x"></i>
+        </div>
+    </div>
+
+    <!-- Card: New Citizens (Last 7 Days) -->
+    <div class="bg-white shadow rounded-lg p-4 flex items-center justify-between">
+        <div>
+            <p class="text-sm font-medium text-secondary-500">{% trans "Nouveaux Citoyens (7 jours)" %}</p>
+            <p class="text-2xl font-semibold text-secondary-900">{{ new_citizens_last_7_days }}</p>
+        </div>
+        <div class="text-success-500">
+            <i class="fas fa-user-plus fa-3x"></i>
+        </div>
+    </div>
+
+    <!-- Card: Total Municipalities -->
+    <div class="bg-white shadow rounded-lg p-4 flex items-center justify-between">
+        <div>
+            <p class="text-sm font-medium text-secondary-500">{% trans "Total Municipalités" %}</p>
+            <p class="text-2xl font-semibold text-secondary-900">{{ total_municipalities }}</p>
+        </div>
+        <div class="text-secondary-700">
+            <i class="fas fa-city fa-3x"></i>
+        </div>
+    </div>
+   <!-- Card: Total admins-->
+    <div class="bg-white shadow rounded-lg p-4 flex items-center justify-between">
+        <div>
+            <p class="text-sm font-medium text-secondary-500">{% trans "Total Admins" %}</p>
+            <p class="text-2xl font-semibold text-secondary-900">{{ total_admins }}</p>
+        </div>
+        <div class="text-primary-600">
+            <i class="fas fa-user-shield fa-3x"></i>
+        </div>
+    </div>
+    <!-- Card: Total problems -->
+    <div class="bg-white shadow rounded-lg p-4 flex items-center justify-between">
+        <div>
+            <p class="text-sm font-medium text-secondary-500">{% trans "Total problèmes" %}</p>
+            <p class="text-2xl font-semibold text-secondary-900">{{ total_problems }}</p>
+        </div>
+        <div class="text-primary-600">
+            <i class="fas fa-exclamation-triangle fa-3x"></i>
+        </div>
+    </div>
+    <!-- Card: New problmes 7 day-->
+    <div class="bg-white shadow rounded-lg p-4 flex items-center justify-between">
+        <div>
+            <p class="text-sm font-medium text-secondary-500">{% trans "Nouveaux problèmes (7 jours)" %}</p>
+            <p class="text-2xl font-semibold text-secondary-900">{{ new_problems_last_7_days }}</p>
+        </div>
+        <div class="text-primary-600">
+            <i class="fas fa-exclamation-circle fa-3x"></i>
+        </div>
+    </div>
+     <!-- Card: Total complaints-->
+    <div class="bg-white shadow rounded-lg p-4 flex items-center justify-between">
+        <div>
+            <p class="text-sm font-medium text-secondary-500">{% trans "Total réclamations" %}</p>
+            <p class="text-2xl font-semibold text-secondary-900">{{ total_complaints }}</p>
+        </div>
+        <div class="text-primary-600">
+            <i class="fas fa-file-signature fa-3x"></i>
+        </div>
+    </div>
+     <!-- Card: New complaints 7 day -->
+    <div class="bg-white shadow rounded-lg p-4 flex items-center justify-between">
+        <div>
+            <p class="text-sm font-medium text-secondary-500">{% trans "Nouveaux Réclamations (7 jours)" %}</p>
+            <p class="text-2xl font-semibold text-secondary-900">{{ new_complaints_last_7_days }}</p>
+        </div>
+        <div class="text-primary-600">
+            <i class="fas fa-file-invoice fa-3x"></i>
+        </div>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+    <!-- Chart: Problem Status Breakdown -->
+    <div class="bg-white shadow rounded-lg p-6">
+        <h2 class="text-lg font-semibold text-secondary-800 mb-4">{% trans "Statut des Problèmes" %}</h2>
+        <div id="problem-status-chart" style="min-height: 350px;"></div>
+    </div>
+
+    <!-- Chart: Complaint Status Breakdown Chart-->
+    <div class="bg-white shadow rounded-lg p-6">
+        <h2 class="text-lg font-semibold text-secondary-800 mb-4">{% trans "Statut des Réclamations" %}</h2>
+        <div id="complaint-status-chart" style="min-height: 350px;"></div>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+    <!-- Chart: problem total per City -->
+    <div class="bg-white shadow rounded-lg p-6">
+        <h2 class="text-lg font-semibold text-secondary-800 mb-4">{% trans "Nombre Problèmes par Municipalité(30 jours)" %}</h2>
+        <div id="city-problems-chart" style="min-height: 350px;"></div>
+    </div>
+    
+    <!-- List: Recent Activities-->
+    <div class="bg-white shadow rounded-lg p-6">
+        <h2 class="text-lg font-semibold text-secondary-800 mb-4">{% trans "Activités Récentes" %}</h2>
+        <ul>
+            {% for activity in recent_activities %}
+                <li class="py-2 border-b border-gray-200 last:border-0">
+                    <span class="text-secondary-800">{{ activity.text }}</span>
+                    <span class="text-secondary-500 text-sm"> ({{ activity.timestamp }}) </span>
+                </li>
+            {% endfor %}
+        </ul>
+        {% if not recent_activities %}
+            <p class="text-secondary-600">{% trans "Aucune activité récente." %}</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Parse JSON data from Django context
+    try {
+        var problemStatusData = JSON.parse('{{ problem_status_data|safe }}'); 
+        var complaintStatusData = JSON.parse('{{ complaint_status_data|safe }}');
+        var municipalitiesData = JSON.parse('{{ municipalities_by_problems|safe }}');
+        
+        // Problem Status Chart
+        renderPieChart('problem-status-chart', problemStatusData, 'status', 'count', [
+            '#0ea5e9', '#3b82f6', '#10b981', '#ef4444', '#f59e0b'
+        ]);
+        
+        // Complaint Status Chart
+        renderPieChart('complaint-status-chart', complaintStatusData, 'status', 'count', [
+            '#0ea5e9', '#3b82f6', '#10b981', '#ef4444', '#f59e0b'
+        ]);
+        
+        // Municipality Problems Chart (Bar Chart)
+        renderBarChart('city-problems-chart', municipalitiesData, 'municipality__name', 'num_problems');
+        
+    } catch (error) {
+        console.error("Error initializing charts:", error);
+    }
+    
+    // Utility function to render pie charts
+    function renderPieChart(elementId, data, labelField, valueField, colors) {
+        if (!data || !data.length) {
+            document.getElementById(elementId).innerHTML = "<p class='text-center text-secondary-500 py-6'>No data available</p>";
+            return;
+        }
+        
+        const labels = data.map(item => item.fields && item.fields[labelField] ? item.fields[labelField] : item[labelField]);
+        const values = data.map(item => item.fields && item.fields[valueField] ? item.fields[valueField] : item[valueField]);
+        
+        var options = {
+            series: values,
+            chart: {
+                type: 'pie',
+                height: 350
+            },
+            labels: labels,
+            colors: colors,
+            legend: {
+                position: 'bottom'
+            },
+            responsive: [{
+                breakpoint: 480,
+                options: {
+                    chart: {
+                        width: 300
+                    },
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }]
+        };
+        
+        try {
+            var chart = new ApexCharts(document.getElementById(elementId), options);
+            chart.render();
+        } catch (error) {
+            console.error(`Error rendering chart ${elementId}:`, error);
+        }
+    }
+    
+    // Utility function to render bar charts
+    function renderBarChart(elementId, data, labelField, valueField) {
+        if (!data || !data.length) {
+            document.getElementById(elementId).innerHTML = "<p class='text-center text-secondary-500 py-6'>No data available</p>";
+            return;
+        }
+        
+        const categories = data.map(item => item.fields && item.fields[labelField] ? item.fields[labelField] : item[labelField]);
+        const values = data.map(item => item.fields && item.fields[valueField] ? item.fields[valueField] : item[valueField]);
+        
+        var options = {
+            series: [{
+                name: 'Problèmes',
+                data: values
+            }],
+            chart: {
+                type: 'bar',
+                height: 350
+            },
+            plotOptions: {
+                bar: {
+                    borderRadius: 4,
+                    horizontal: true,
+                }
+            },
+            dataLabels: {
+                enabled: false
+            },
+            xaxis: {
+                categories: categories
+            },
+            colors: ['#3b82f6']
+        };
+        
+        try {
+            var chart = new ApexCharts(document.getElementById(elementId), options);
+            chart.render();
+        } catch (error) {
+            console.error(`Error rendering chart ${elementId}:`, error);
+        }
+    }
+});
+</script>
+{% endblock %}

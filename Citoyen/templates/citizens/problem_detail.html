@@ -2,7 +2,44 @@
 {% load humanize %}
 
 {% block title %}Détail Problème #{{ problem.id|stringformat:".8s" }}{% endblock %}
+{% block extra_css %}
+  <!-- Leaflet CSS for the map -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  <style>
+    /* Custom styles for the map container */
+    #map-display {
+    height: 250px !important;
+    width: 100% !important;
+    min-height: 250px;
+}
 
+    /* Hide step2 by default */
+    .step2 {
+      display: none;
+    }
+    .loader {
+      border: 5px solid #f3f3f3;
+      border-radius: 50%;
+      border-top: 5px solid #3498db;
+      width: 40px;
+      height: 40px;
+      margin: 10px auto;
+      -webkit-animation: spin 2s linear infinite;
+      animation: spin 2s linear infinite;
+    }
+    
+    @-webkit-keyframes spin {
+      0% { -webkit-transform: rotate(0deg); }
+      100% { -webkit-transform: rotate(360deg); }
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+{% endblock %}
 {% block content %}
 <div class="space-y-6">
     <!-- Back Link & Title -->
@@ -107,9 +144,25 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 
 <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const lat = {{ problem.latitude|default:0 }}; // Default to 0 if null
-        const lng = {{ problem.longitude|default:0 }}; // Default to 0 if null
+setTimeout(() => {
+        const lat = "{{ problem.latitude|default:0 }}";
+        const lng = "{{ problem.longitude|default:0 }}";
+         // Try parsing coordinates, handle potential errors and convert commas to periods
+    try {
+        if (lat) {
+            // Replace commas with periods before parsing
+            const normalizedLatStr = lat.replace(',', '.');
+            lat = parseFloat(normalizedLatStr);
+        }
+        if (lng) {
+            // Replace commas with periods before parsing
+            const normalizedLonStr = lng.replace(',', '.');
+            lon = parseFloat(normalizedLonStr);
+        }
+    } catch (e) {
+        console.error("Error parsing coordinates:", e);
+    }
+
         const mapElement = document.getElementById('map-display');
 
         if (mapElement && lat !== 0 && lng !== 0) { // Check if coords are valid
@@ -136,6 +189,6 @@
             mapElement.innerHTML = '<p class="text-center text-gray-500 p-4">Localisation non disponible sur la carte.</p>';
             mapElement.style.height = 'auto';
         }
-    });
+    }, 300);
 </script>
 {% endblock %}

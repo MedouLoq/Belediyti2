@@ -1,0 +1,762 @@
+{% extends 'muni_admin/base.html' %}
+{% load static %}
+{% load i18n %}
+{% block title %}{% trans "Tableau de bord" %}{% endblock %}
+{% block header_title %}{% trans "Tableau de bord" %}{% endblock %}
+
+{% block extra_styles %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+<style>
+    .dashboard-card {
+        transition: all 0.3s ease;
+    }
+    .dashboard-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    }
+    .card-icon {
+        transition: all 0.3s ease;
+    }
+    .dashboard-card:hover .card-icon {
+        transform: scale(1.1);
+    }
+    .trend-up {
+        color: #10b981;
+    }
+    .trend-down {
+        color: #ef4444;
+    }
+    .trend-neutral {
+        color: #f59e0b;
+    }
+    .chart-container {
+        border-radius: 0.5rem;
+        overflow: hidden;
+        transition: all 0.3s ease;
+    }
+    .chart-container:hover {
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    }
+    .tab-content {
+        display: none;
+    }
+    .tab-content.active {
+        display: block;
+        animation: fadeIn 0.5s ease;
+    }
+    @keyframes fadeIn {
+        from {opacity: 0;}
+        to {opacity: 1;}
+    }
+    .tab-button {
+        cursor: pointer;
+        padding: 0.5rem 1rem;
+        border-radius: 0.25rem;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+    .tab-button.active {
+        background-color: #3b82f6;
+        color: white;
+    }
+    .map-container {
+        height: 400px;
+        border-radius: 0.5rem;
+        overflow: hidden;
+    }
+    #toast-container {
+        position: fixed;
+        top: 1rem;
+        right: 1rem;
+        z-index: 1050;
+        width: 300px;
+    }
+    .toast {
+        background-color: rgba(0, 0, 0, 0.75);
+        color: white;
+        padding: 0.75rem 1.25rem;
+        border-radius: 0.25rem;
+        margin-bottom: 0.5rem;
+        box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.1);
+        opacity: 0.9;
+        display: flex;
+        align-items: center;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+    <div class="mb-6">
+        <div class="flex flex-wrap items-center justify-between mb-4">
+            <h1 class="text-2xl font-bold text-secondary-900">{% trans "Vue d'ensemble" %}</h1>
+            <div class="flex space-x-2">
+                <select id="date-range-selector" class="rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
+                    <option value="7" {% if request.GET.days == '7' or not request.GET.days %}selected{% endif %}>{% trans "7 derniers jours" %}</option>
+                    <option value="30" {% if request.GET.days == '30' %}selected{% endif %}>{% trans "30 derniers jours" %}</option>
+                    <option value="90" {% if request.GET.days == '90' %}selected{% endif %}>{% trans "90 derniers jours" %}</option>
+                    <option value="365" {% if request.GET.days == '365' %}selected{% endif %}>{% trans "Année" %}</option>
+                </select>
+                <button id="refresh-dashboard" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-lg flex items-center">
+                    <i class="fas fa-sync-alt mr-1"></i> {% trans "Actualiser" %}
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+        <!-- Total Problems -->
+        <div class="bg-white shadow rounded-lg p-4 flex items-center justify-between dashboard-card">
+            <div>
+                <p class="text-sm font-medium text-secondary-500">{% trans "Total Problèmes Signalés" %}</p>
+                <div class="flex items-baseline">
+                    <p class="text-2xl font-semibold text-secondary-900">{{ total_problems }}</p>
+                    {% with change=problem_percent_change|default:0 %}
+                        {% if change > 0 %}
+                            <span class="ml-2 text-sm trend-up flex items-center"><i class="fas fa-arrow-up mr-1"></i>{{ change }}%</span>
+                        {% elif change < 0 %}
+                            <span class="ml-2 text-sm trend-down flex items-center"><i class="fas fa-arrow-down mr-1"></i>{{ change|slice:"1:" }}%</span>
+                        {% else %}
+                            <span class="ml-2 text-sm trend-neutral flex items-center"><i class="fas fa-minus mr-1"></i>0%</span>
+                        {% endif %}
+                    {% endwith %}
+                </div>
+                <p class="text-xs text-secondary-500 mt-1">{% trans "vs période précédente" %}</p>
+            </div>
+            <div class="text-danger-500 card-icon">
+                <i class="fas fa-triangle-exclamation fa-3x"></i>
+            </div>
+        </div>
+
+        <!-- New Problems (Selected Period) -->
+        <div class="bg-white shadow rounded-lg p-4 flex items-center justify-between dashboard-card">
+            <div>
+                <p class="text-sm font-medium text-secondary-500">{% trans "Nouveaux Problèmes" %}</p>
+                <div class="flex items-baseline">
+                    <p class="text-2xl font-semibold text-secondary-900">{{ new_problems_last_period }}</p>
+                     {% with change=new_problem_percent_change|default:0 %}
+                        {% if change > 0 %}
+                            <span class="ml-2 text-sm trend-up flex items-center"><i class="fas fa-arrow-up mr-1"></i>{{ change }}%</span>
+                        {% elif change < 0 %}
+                            <span class="ml-2 text-sm trend-down flex items-center"><i class="fas fa-arrow-down mr-1"></i>{{ change|slice:"1:" }}%</span>
+                        {% else %}
+                            <span class="ml-2 text-sm trend-neutral flex items-center"><i class="fas fa-minus mr-1"></i>0%</span>
+                        {% endif %}
+                    {% endwith %}
+                </div>
+                <p class="text-xs text-secondary-500 mt-1" id="time-period-problems">
+                    {% with days=request.GET.days|default:"7" %}
+                        {% if days == '7' %}{% trans "7 derniers jours" %}
+                        {% elif days == '30' %}{% trans "30 derniers jours" %}
+                        {% elif days == '90' %}{% trans "90 derniers jours" %}
+                        {% elif days == '365' %}{% trans "Année" %}
+                        {% endif %}
+                    {% endwith %}
+                </p>
+            </div>
+            <div class="text-warning-500 card-icon">
+                <i class="fas fa-exclamation-triangle fa-3x"></i>
+            </div>
+        </div>
+
+        <!-- Total Complaints -->
+        <div class="bg-white shadow rounded-lg p-4 flex items-center justify-between dashboard-card">
+            <div>
+                <p class="text-sm font-medium text-secondary-500">{% trans "Total Réclamations" %}</p>
+                <div class="flex items-baseline">
+                    <p class="text-2xl font-semibold text-secondary-900">{{ total_complaints }}</p>
+                    {% with change=complaint_percent_change|default:0 %}
+                        {% if change > 0 %}
+                            <span class="ml-2 text-sm trend-up flex items-center"><i class="fas fa-arrow-up mr-1"></i>{{ change }}%</span>
+                        {% elif change < 0 %}
+                            <span class="ml-2 text-sm trend-down flex items-center"><i class="fas fa-arrow-down mr-1"></i>{{ change|slice:"1:" }}%</span>
+                        {% else %}
+                            <span class="ml-2 text-sm trend-neutral flex items-center"><i class="fas fa-minus mr-1"></i>0%</span>
+                        {% endif %}
+                    {% endwith %}
+                </div>
+                <p class="text-xs text-secondary-500 mt-1">{% trans "vs période précédente" %}</p>
+            </div>
+            <div class="text-primary-500 card-icon">
+                <i class="fas fa-file-signature fa-3x"></i>
+            </div>
+        </div>
+
+        <!-- New Complaints (Selected Period) -->
+        <div class="bg-white shadow rounded-lg p-4 flex items-center justify-between dashboard-card">
+            <div>
+                <p class="text-sm font-medium text-secondary-500">{% trans "Nouvelles Réclamations" %}</p>
+                <div class="flex items-baseline">
+                    <p class="text-2xl font-semibold text-secondary-900">{{ new_complaints_last_period }}</p>
+                    {% with change=new_complaint_percent_change|default:0 %}
+                        {% if change > 0 %}
+                            <span class="ml-2 text-sm trend-up flex items-center"><i class="fas fa-arrow-up mr-1"></i>{{ change }}%</span>
+                        {% elif change < 0 %}
+                            <span class="ml-2 text-sm trend-down flex items-center"><i class="fas fa-arrow-down mr-1"></i>{{ change|slice:"1:" }}%</span>
+                        {% else %}
+                            <span class="ml-2 text-sm trend-neutral flex items-center"><i class="fas fa-minus mr-1"></i>0%</span>
+                        {% endif %}
+                    {% endwith %}
+                </div>
+                 <p class="text-xs text-secondary-500 mt-1" id="time-period-complaints">
+                    {% with days=request.GET.days|default:"7" %}
+                        {% if days == '7' %}{% trans "7 derniers jours" %}
+                        {% elif days == '30' %}{% trans "30 derniers jours" %}
+                        {% elif days == '90' %}{% trans "90 derniers jours" %}
+                        {% elif days == '365' %}{% trans "Année" %}
+                        {% endif %}
+                    {% endwith %}
+                </p>
+            </div>
+            <div class="text-info-500 card-icon">
+                <i class="fas fa-file-alt fa-3x"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- Time Series Charts -->
+    <div class="bg-white shadow rounded-lg p-6 mb-6 chart-container">
+        <div class="flex flex-wrap items-center justify-between mb-4">
+            <h2 class="text-lg font-semibold text-secondary-800">{% trans "Tendances sur 90 jours" %}</h2>
+            <div class="flex space-x-2" id="time-series-tabs">
+                <button class="tab-button active" data-target="problems-chart">{% trans "Problèmes" %}</button>
+                <button class="tab-button" data-target="complaints-chart">{% trans "Réclamations" %}</button>
+                <button class="tab-button" data-target="combined-chart">{% trans "Combiné" %}</button>
+            </div>
+        </div>
+        <div class="tab-content active" id="problems-chart">
+            <div id="problems-time-series" style="height: 350px;"></div>
+        </div>
+        <div class="tab-content" id="complaints-chart">
+            <div id="complaints-time-series" style="height: 350px;"></div>
+        </div>
+        <div class="tab-content" id="combined-chart">
+            <div id="combined-time-series" style="height: 350px;"></div>
+        </div>
+    </div>
+
+    <!-- Status and Categories -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <!-- Status Breakdowns -->
+        <div class="bg-white shadow rounded-lg p-6 chart-container">
+            <div class="flex flex-wrap items-center justify-between mb-4">
+                <h2 class="text-lg font-semibold text-secondary-800">{% trans "Statut des signalements" %}</h2>
+                <div class="flex space-x-2" id="status-tabs">
+                    <button class="tab-button active" data-target="problem-status">{% trans "Problèmes" %}</button>
+                    <button class="tab-button" data-target="complaint-status">{% trans "Réclamations" %}</button>
+                </div>
+            </div>
+            <div class="tab-content active" id="problem-status">
+                <div id="problem-status-chart" style="height: 300px;"></div>
+            </div>
+            <div class="tab-content" id="complaint-status">
+                <div id="complaint-status-chart" style="height: 300px;"></div>
+            </div>
+        </div>
+
+        <!-- Top Categories -->
+        <div class="bg-white shadow rounded-lg p-6 chart-container">
+            <h2 class="text-lg font-semibold text-secondary-800 mb-4">{% trans "Top 5 Catégories de Problèmes" %}</h2>
+            <div id="problem-categories-chart" style="height: 300px;"></div>
+        </div>
+    </div>
+
+    <!-- Map and Resolution Time -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <!-- Map View -->
+        <div class="bg-white shadow rounded-lg p-6 chart-container">
+            <h2 class="text-lg font-semibold text-secondary-800 mb-4">{% trans "Distribution Géographique (Problèmes)" %}</h2>
+            <div id="problem-map" class="map-container"></div>
+        </div>
+
+        <!-- Resolution Time -->
+        <div class="bg-white shadow rounded-lg p-6 chart-container">
+            <h2 class="text-lg font-semibold text-secondary-800 mb-4">{% trans "Temps de Résolution Moyen (Problèmes)" %}</h2>
+            <div id="resolution-time-chart" style="height: 300px;"></div>
+        </div>
+    </div>
+
+    <!-- Recent Activities Table with Filtering -->
+    <div class="bg-white shadow rounded-lg p-6 mb-6">
+        <div class="flex flex-wrap items-center justify-between mb-4">
+            <h2 class="text-lg font-semibold text-secondary-800">{% trans "Activités Récentes" %}</h2>
+            <div class="flex space-x-2">
+                <select id="activity-filter" class="rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
+                    <option value="all">{% trans "Tous" %}</option>
+                    <option value="problem">{% trans "Problèmes" %}</option>
+                    <option value="complaint">{% trans "Réclamations" %}</option>
+                </select>
+            </div>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{% trans "Type" %}</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{% trans "Description" %}</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{% trans "Date" %}</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{% trans "Statut" %}</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{% trans "Actions" %}</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200" id="activities-table-body">
+                    {% for activity in recent_activities %}
+                    <tr class="activity-row" data-type="{{ activity.type }}">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            {% if activity.type == 'problem' %}
+                                <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                                    {% trans "Problème" %}
+                                </span>
+                            {% else %}
+                                <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                                    {% trans "Réclamation" %}
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="text-sm text-gray-900">{{ activity.text }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm text-gray-500">{{ activity.timestamp|date:"d/m/Y H:i" }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                {% if activity.status == 'PENDING' %}bg-yellow-100 text-yellow-800
+                                {% elif activity.status == 'IN_PROGRESS' or activity.status == 'REVIEWING' %}bg-blue-100 text-blue-800
+                                {% elif activity.status == 'RESOLVED' %}bg-green-100 text-green-800
+                                {% elif activity.status == 'REJECTED' %}bg-red-100 text-red-800
+                                {% elif activity.status == 'DELEGATED' %}bg-purple-100 text-purple-800
+                                {% else %}bg-gray-100 text-gray-800
+                                {% endif %}">
+                                {{ activity.status_display }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                            <a href="{{ activity.detail_url }}" class="text-blue-600 hover:text-blue-900">{% trans "Voir" %}</a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="px-6 py-4 text-center text-secondary-600">{% trans "Aucune activité récente." %}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div id="toast-container"></div>
+{% endblock %}
+
+{% block extra_scripts %}
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // --- Data Parsing --- 
+            const problemsTimeSeriesData = JSON.parse('{{ problems_time_series|safe }}');
+            const complaintsTimeSeriesData = JSON.parse('{{ complaints_time_series|safe }}');
+            const problemStatusData = JSON.parse('{{ problem_status_data|safe }}');
+            const complaintStatusData = JSON.parse('{{ complaint_status_data|safe }}');
+            const problemCategoriesData = JSON.parse('{{ problem_categories_data|safe }}');
+            const resolutionTimeData = JSON.parse('{{ resolution_time_data|safe }}');
+            const problemMapData = JSON.parse('{{ problem_map_data|safe }}');
+            const municipalityLat = parseFloat('{{ municipality.latitude|default:0 }}');
+            const municipalityLon = parseFloat('{{ municipality.longitude|default:0 }}');
+            const statusChoices = {
+                'PENDING': '{% trans "En attente" %}',
+                'IN_PROGRESS': '{% trans "En cours" %}',
+                'DELEGATED': '{% trans "Délégué" %}',
+                'RESOLVED': '{% trans "Résolu" %}',
+                'REJECTED': '{% trans "Rejeté" %}',
+                'REVIEWING': '{% trans "En examen" %}'
+            };
+
+            // --- Chart Options --- 
+            const commonChartOptions = {
+                chart: {
+                    fontFamily: 'inherit',
+                    toolbar: { show: false },
+                    zoom: { enabled: false }
+                },
+                colors: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#6366f1', '#a855f7'],
+                dataLabels: { enabled: false },
+                stroke: { curve: 'smooth', width: 2 },
+                grid: {
+                    borderColor: '#e5e7eb',
+                    strokeDashArray: 4,
+                    yaxis: { lines: { show: true } }
+                },
+                xaxis: {
+                    labels: { style: { colors: '#6b7280' } },
+                    axisBorder: { show: false },
+                    axisTicks: { show: false }
+                },
+                yaxis: {
+                    labels: { style: { colors: '#6b7280' } }
+                },
+                tooltip: {
+                    theme: 'light',
+                    x: { format: 'dd MMM yyyy' }
+                },
+                legend: { show: true, position: 'top', horizontalAlign: 'right', offsetY: -10 }
+            };
+
+            // --- Time Series Charts --- 
+            const timeSeriesOptions = (seriesData, categories) => ({
+                ...commonChartOptions,
+                series: seriesData,
+                chart: { ...commonChartOptions.chart, type: 'area', height: 350 },
+                xaxis: {
+                    ...commonChartOptions.xaxis,
+                    type: 'datetime',
+                    categories: categories,
+                },
+                tooltip: {
+                    ...commonChartOptions.tooltip,
+                    x: { format: 'dd MMM yyyy' }
+                }
+            });
+
+            if (document.getElementById('problems-time-series')) {
+                const problemsChart = new ApexCharts(document.getElementById('problems-time-series'), 
+                    timeSeriesOptions(problemsTimeSeriesData.series, problemsTimeSeriesData.dates)
+                );
+                problemsChart.render();
+            }
+
+            if (document.getElementById('complaints-time-series')) {
+                const complaintsChart = new ApexCharts(document.getElementById('complaints-time-series'), 
+                    timeSeriesOptions(complaintsTimeSeriesData.series, complaintsTimeSeriesData.dates)
+                );
+                complaintsChart.render();
+            }
+
+            if (document.getElementById('combined-time-series')) {
+                const combinedSeries = [
+                    problemsTimeSeriesData.series[0],
+                    complaintsTimeSeriesData.series[0]
+                ];
+                const combinedChart = new ApexCharts(document.getElementById('combined-time-series'), 
+                    timeSeriesOptions(combinedSeries, problemsTimeSeriesData.dates)
+                );
+                combinedChart.render();
+            }
+
+            // --- Status Charts (Donut) --- 
+            const statusChartOptions = (data, title) => {
+                const labels = data.map(item => statusChoices[item.status] || item.status);
+                const series = data.map(item => item.count);
+                return {
+                    series: series,
+                    chart: {
+                        type: 'donut',
+                        height: 300,
+                        fontFamily: 'inherit'
+                    },
+                    labels: labels,
+                    colors: ['#f59e0b', '#3b82f6', '#a855f7', '#10b981', '#ef4444', '#6b7280'], // PENDING, IN_PROGRESS/REVIEWING, DELEGATED, RESOLVED, REJECTED
+                    legend: { position: 'bottom' },
+                    dataLabels: { enabled: true, formatter: function (val) { return Math.round(val) + "%" } },
+                    tooltip: {
+                        y: { formatter: function (val) { return val + " " + title } }
+                    }
+                };
+            };
+
+            if (document.getElementById('problem-status-chart')) {
+                const problemStatusChart = new ApexCharts(document.getElementById('problem-status-chart'), 
+                    statusChartOptions(problemStatusData, '{% trans "Problèmes" %}')
+                );
+                problemStatusChart.render();
+            }
+
+            if (document.getElementById('complaint-status-chart')) {
+                const complaintStatusChart = new ApexCharts(document.getElementById('complaint-status-chart'), 
+                    statusChartOptions(complaintStatusData, '{% trans "Réclamations" %}')
+                );
+                complaintStatusChart.render();
+            }
+
+            // --- Problem Categories Chart (Bar) ---
+            if (document.getElementById('problem-categories-chart')) {
+                const categoriesLabels = problemCategoriesData.map(item => item.category__name || '{% trans "Sans catégorie" %}');
+                const categoriesSeries = problemCategoriesData.map(item => item.count);
+                const categoriesChart = new ApexCharts(document.getElementById('problem-categories-chart'), {
+                    series: [{ name: '{% trans "Nombre de problèmes" %}', data: categoriesSeries }],
+                    chart: {
+                        type: 'bar',
+                        height: 300,
+                        fontFamily: 'inherit',
+                        toolbar: { show: false }
+                    },
+                    plotOptions: {
+                        bar: {
+                            horizontal: true,
+                            borderRadius: 4,
+                            dataLabels: { position: 'top' }
+                        }
+                    },
+                    colors: ['#3b82f6'],
+                    dataLabels: {
+                        enabled: true,
+                        offsetX: -6,
+                        style: { fontSize: '12px', colors: ['#fff'] }
+                    },
+                    xaxis: {
+                        categories: categoriesLabels,
+                        labels: { style: { colors: '#6b7280' } }
+                    },
+                    yaxis: {
+                        labels: { style: { colors: '#6b7280' } }
+                    },
+                    grid: { borderColor: '#e5e7eb' },
+                    tooltip: {
+                        y: { formatter: function (val) { return val + " {% trans "problèmes" %}" } }
+                    }
+                });
+                categoriesChart.render();
+            }
+
+            // --- Resolution Time Chart (Bar) ---
+            if (document.getElementById('resolution-time-chart')) {
+                const resolutionLabels = resolutionTimeData.map(item => item.category);
+                const resolutionSeries = resolutionTimeData.map(item => parseFloat(item.avg_days).toFixed(1));
+                const resolutionChart = new ApexCharts(document.getElementById('resolution-time-chart'), {
+                    series: [{ name: '{% trans "Jours moyens" %}', data: resolutionSeries }],
+                    chart: {
+                        type: 'bar',
+                        height: 300,
+                        fontFamily: 'inherit',
+                        toolbar: { show: false }
+                    },
+                    plotOptions: {
+                        bar: {
+                            horizontal: false,
+                            borderRadius: 4,
+                            columnWidth: '50%',
+                        }
+                    },
+                    colors: ['#10b981'],
+                    dataLabels: { enabled: false },
+                    xaxis: {
+                        categories: resolutionLabels,
+                        labels: { style: { colors: '#6b7280' }, rotate: -45, trim: true, maxHeight: 100 }
+                    },
+                    yaxis: {
+                        title: { text: '{% trans "Jours" %}' },
+                        labels: { style: { colors: '#6b7280' } }
+                    },
+                    grid: { borderColor: '#e5e7eb' },
+                    tooltip: {
+                        y: { formatter: function (val) { return val + " {% trans "jours" %}" } }
+                    }
+                });
+                resolutionChart.render();
+            }
+
+            // --- Problem Map (Leaflet) ---
+          // --- Problem Map (Leaflet) ---
+if (document.getElementById('problem-map')) {
+    // Initialize the map first, we'll set view later
+    const map = L.map('problem-map');
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+
+    const statusColors = {
+        'PENDING': 'orange',
+        'IN_PROGRESS': 'blue',
+        'DELEGATED': 'purple',
+        'RESOLVED': 'green',
+        'REJECTED': 'red'
+    };
+    
+    // Create a bounds object to track the extent of all markers
+    const bounds = L.latLngBounds();
+    let hasValidCoordinates = false;
+
+    // Add markers for each problem and extend bounds
+    problemMapData.forEach(problem => {
+        if (problem.latitude && problem.longitude) {
+            hasValidCoordinates = true;
+            const markerColor = statusColors[problem.status] || 'grey';
+            const marker = L.circleMarker([problem.latitude, problem.longitude], {
+                radius: 8,
+                fillColor: markerColor,
+                color: '#000',
+                weight: 1,
+                opacity: 1,
+                fillOpacity: 0.8
+            }).addTo(map);
+
+            const popupContent = `
+                <b>{% trans "Catégorie" %}:</b> ${problem.category__name || '{% trans "N/A" %}'}<br>
+                <b>{% trans "Description" %}:</b> ${problem.description.substring(0, 100)}...<br>
+                <b>{% trans "Statut" %}:</b> ${statusChoices[problem.status] || problem.status}<br>
+                <b>{% trans "Signalé le" %}:</b> ${new Date(problem.created_at).toLocaleDateString()}
+                <br><a href="/muni_admin/problems/${problem.pk}/detail/" target="_blank">{% trans "Voir détails" %}</a>
+            `;
+            marker.bindPopup(popupContent);
+            
+            // Extend bounds to include this marker
+            bounds.extend([problem.latitude, problem.longitude]);
+        }
+    });
+
+    // Set map view based on markers or fallback to municipality
+    if (hasValidCoordinates) {
+        // If we have any valid coordinates, fit the map to those bounds
+        map.fitBounds(bounds, {
+            padding: [30, 30], // Add some padding around the bounds
+            maxZoom: 15        // Don't zoom in too far if only one point
+        });
+    } else if (municipalityLat && municipalityLon) {
+        // If no problem coordinates but we have municipality coords, use those
+        map.setView([municipalityLat, municipalityLon], 12);
+    } else {
+        // Last resort fallback
+        map.setView([20.26, -10.25], 7);
+    }
+    
+    // Add a legend
+    const legend = L.control({position: 'bottomright'});
+    legend.onAdd = function (map) {
+        const div = L.DomUtil.create('div', 'info legend');
+        div.style.backgroundColor = 'white';
+        div.style.padding = '6px 8px';
+        div.style.border = '1px solid #ccc';
+        div.style.borderRadius = '5px';
+        div.style.lineHeight = '18px';
+        div.style.fontFamily = 'inherit';
+        div.style.fontSize = '12px';
+        
+        div.innerHTML = '<h4 style="margin: 0 0 5px 0;">{% trans "Statut" %}</h4>';
+        
+        Object.entries(statusColors).forEach(([status, color]) => {
+            div.innerHTML += `
+                <div style="margin-bottom: 3px;">
+                    <i style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background-color: ${color}; margin-right: 5px;"></i>
+                    ${statusChoices[status] || status}
+                </div>
+            `;
+        });
+        
+        return div;
+    };
+    legend.addTo(map);
+}
+            // --- Tab Switching Logic --- 
+            function setupTabs(tabContainerId) {
+                const tabContainer = document.getElementById(tabContainerId);
+                if (!tabContainer) return;
+                
+                const tabButtons = tabContainer.querySelectorAll('.tab-button');
+                const tabContents = tabContainer.parentElement.querySelectorAll('.tab-content');
+
+                tabButtons.forEach(button => {
+                    button.addEventListener('click', () => {
+                        const targetId = button.dataset.target;
+                        
+                        // Update button styles
+                        tabButtons.forEach(btn => btn.classList.remove('active'));
+                        button.classList.add('active');
+                        
+                        // Update content visibility
+                        tabContents.forEach(content => {
+                            if (content.id === targetId) {
+                                content.classList.add('active');
+                            } else {
+                                content.classList.remove('active');
+                            }
+                        });
+                    });
+                });
+            }
+            setupTabs('time-series-tabs');
+            setupTabs('status-tabs');
+
+            // --- Activity Table Filtering --- 
+            const activityFilter = document.getElementById('activity-filter');
+            const activityTableBody = document.getElementById('activities-table-body');
+            const activityRows = activityTableBody.querySelectorAll('.activity-row');
+
+            if (activityFilter) {
+                activityFilter.addEventListener('change', function() {
+                    const filterValue = this.value;
+                    activityRows.forEach(row => {
+                        if (filterValue === 'all' || row.dataset.type === filterValue) {
+                            row.style.display = '';
+                        } else {
+                            row.style.display = 'none';
+                        }
+                    });
+                });
+            }
+
+            // --- Date Range Selector & Refresh --- 
+            const dateRangeSelector = document.getElementById('date-range-selector');
+            const refreshButton = document.getElementById('refresh-dashboard');
+
+            function reloadWithParams() {
+                const selectedDays = dateRangeSelector.value;
+                window.location.href = `?days=${selectedDays}`;
+            }
+
+            if (dateRangeSelector) {
+                dateRangeSelector.addEventListener('change', reloadWithParams);
+            }
+            if (refreshButton) {
+                refreshButton.addEventListener('click', reloadWithParams);
+            }
+
+            // --- Toast Notifications (Example) --- 
+            const toastContainer = document.getElementById('toast-container');
+            function showToast(message, type = 'info') {
+                if (!toastContainer) return;
+                const toast = document.createElement('div');
+                toast.className = `toast animate__animated animate__fadeInRight bg-${type}-500`; // Example: use Tailwind colors
+                toast.innerHTML = `
+                    <span>${message}</span>
+                    <button class="ml-auto text-white focus:outline-none">
+                        <i class="fas fa-times"></i>
+                    </button>
+                `;
+                toastContainer.appendChild(toast);
+                
+                toast.querySelector('button').addEventListener('click', () => {
+                    toast.classList.replace('animate__fadeInRight', 'animate__fadeOutRight');
+                    setTimeout(() => toastContainer.removeChild(toast), 500);
+                });
+                
+                setTimeout(() => {
+                    if (toastContainer.contains(toast)) {
+                        toast.classList.replace('animate__fadeInRight', 'animate__fadeOutRight');
+                        setTimeout(() => { if (toastContainer.contains(toast)) toastContainer.removeChild(toast); }, 500);
+                    }
+                }, 5000);
+            }
+            // Example usage: showToast('Dashboard loaded successfully!', 'success');
+
+            // --- Initial Animations --- 
+            const cards = document.querySelectorAll('.dashboard-card');
+            cards.forEach((card, index) => {
+                card.style.opacity = '0'; // Start hidden for animation
+                setTimeout(() => {
+                    card.classList.add('animate__animated', 'animate__fadeInUp');
+                    card.style.opacity = '1';
+                }, index * 100);
+            });
+            
+            const chartContainers = document.querySelectorAll('.chart-container');
+            chartContainers.forEach((container, index) => {
+                container.style.opacity = '0'; // Start hidden for animation
+                setTimeout(() => {
+                    container.classList.add('animate__animated', 'animate__fadeIn');
+                    container.style.opacity = '1';
+                }, 500 + index * 150);
+            });
+        });
+    </script>
+{% endblock %}

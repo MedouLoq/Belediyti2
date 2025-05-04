@@ -1,0 +1,319 @@
+{% extends 'super_admin/base.html' %}
+{% load static %}
+{% load i18n %}
+
+{% block title %}{% trans "Gestion des Municipalités" %}{% endblock %}
+{% block header_title %}{% trans "Gestion des Municipalités" %}{% endblock %}
+
+{% block content %}
+    <div class="bg-white shadow rounded-lg p-6">
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-2xl font-semibold text-secondary-800">{% trans "Gestion des Municipalités" %}</h1>
+            <button type="button" class="btn-create-municipality bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg transition-colors duration-300 flex items-center">
+                <i class="fas fa-plus-circle mr-2"></i> {% trans "Ajouter une municipalité" %}
+            </button>
+        </div>
+
+        <div id="municipality-table-container" class="overflow-x-auto">
+            {% if municipalities %}
+                <table class="min-w-full bg-white border border-gray-200 rounded-lg overflow-hidden">
+                    <thead class="bg-gray-100">
+                    <tr>
+                        <th class="py-3 px-6 text-left text-xs font-medium text-secondary-700 uppercase tracking-wider">{% trans "Nom" %}</th>
+                        <th class="py-3 px-6 text-left text-xs font-medium text-secondary-700 uppercase tracking-wider">{% trans "Latitude" %}</th>
+                        <th class="py-3 px-6 text-left text-xs font-medium text-secondary-700 uppercase tracking-wider">{% trans "Longitude" %}</th>
+                        <th class="py-3 px-6 text-left text-xs font-medium text-secondary-700 uppercase tracking-wider">{% trans "Actions" %}</th>
+                    </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200">
+                    {% for municipality in municipalities %}
+                        <tr data-municipality-id="{{ municipality.id }}" class="hover:bg-gray-50 transition-colors duration-150">
+                            <td class="py-3 px-6 text-sm font-medium text-secondary-900">{{ municipality.name }}</td>
+                            <td class="py-3 px-6 text-sm text-secondary-700">{{ municipality.latitude }}</td>
+                            <td class="py-3 px-6 text-sm text-secondary-700">{{ municipality.longitude }}</td>
+                            <td class="py-3 px-6 text-sm">
+                                <div class="flex space-x-2">
+                                    <button type="button" class="btn-view-municipality bg-blue-50 hover:bg-blue-100 text-blue-700 p-2 rounded transition-colors duration-200"
+                                            data-municipality-id="{{municipality.id}}"
+                                            title="{% trans 'Voir les détails' %}">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    <button type="button" class="btn-update-municipality bg-green-50 hover:bg-green-100 text-green-700 p-2 rounded transition-colors duration-200"
+                                            data-municipality-id="{{municipality.id}}"
+                                            title="{% trans 'Modifier' %}">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button type="button" class="btn-delete-municipality bg-red-50 hover:bg-red-100 text-red-700 p-2 rounded transition-colors duration-200"
+                                            data-municipality-id="{{municipality.id}}"
+                                            title="{% trans 'Supprimer' %}">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <div class="empty-table-message bg-gray-50 p-8 text-center rounded-lg">
+                    <i class="fas fa-city text-gray-300 text-5xl mb-4"></i>
+                    <p class="text-secondary-600">{% trans "Aucune municipalité trouvée." %}</p>
+                    <p class="text-secondary-500 text-sm mt-2">{% trans "Cliquez sur 'Ajouter une municipalité' pour commencer." %}</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Municipality Modal -->
+    <div class="modal fade" id="municipalityModal" tabindex="-1" aria-labelledby="municipalityModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-lg overflow-hidden">
+                <div class="modal-header bg-primary-50 border-b border-primary-100">
+                    <h5 class="modal-title text-primary-700" id="municipalityModalLabel">{% trans "Municipalité" %}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <!-- Static Form in Modal -->
+                    <form id="municipalityForm" method="post">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="name" class="form-label">{% trans "Nom" %}</label>
+                            <input type="text" class="form-control" id="name" name="name" required>
+                            <div class="invalid-feedback"></div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="latitude" class="form-label">{% trans "Latitude" %}</label>
+                            <input type="number" step="any" class="form-control" id="latitude" name="latitude" required>
+                            <div class="invalid-feedback"></div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="longitude" class="form-label">{% trans "Longitude" %}</label>
+                            <input type="number" step="any" class="form-control" id="longitude" name="longitude" required>
+                            <div class="invalid-feedback"></div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="boundary" class="form-label">{% trans "Limites géographiques (GeoJSON)" %}</label>
+                            <textarea class="form-control" id="boundary" name="boundary"></textarea>
+                        </div>
+                        <input type="hidden" name="municipality_id" id="municipalityId"> <!-- Hidden input for municipality ID on edit -->
+                       <div class="mt-4 d-flex justify-content-end">
+                            <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal">{% trans "Annuler" %}</button>
+                            <button type="submit" class="btn btn-primary">{% trans "Enregistrer" %}</button>
+                        </div>
+                    </form>
+                    <div id="confirmationDelete" style="display:none">
+                          <h4>Etes-vous sure de vouloire supprimer cet enregistrement ?</h4>
+                           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{% trans "Annuler" %}</button>
+                            <button type="button" id="confirmDelete" class="btn btn-danger">Confirmer</button>
+
+                   </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+{% endblock %}
+
+{% block extra_scripts %}
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                // Does this cookie string begin with the name we want?
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    $.ajaxSetup({
+            beforeSend: function(xhr, settings) {
+                if (!(/^http:.*/.test(settings.url) || /^https:.*/.test(settings.url))) {
+                    xhr.setRequestHeader("X-CSRFToken", getCookie('csrftoken'));
+                }
+            }
+        });
+
+    $(document).ready(function() {
+        let currentMunicipality = null;
+
+
+           $('#municipalityModal').on('hide.bs.modal', function () {
+                // Reset the form on modal close
+                $('#municipalityForm')[0].reset(); // Reset form values
+
+                // Hide delete elements, show form elements
+
+                $('#municipalityForm').show();
+                $('#confirmationDelete').hide();
+
+              //remove error feedback
+               $('#municipalityForm .form-control').removeClass('is-invalid');
+                $('#municipalityForm .invalid-feedback').text('');
+
+
+           });
+
+          //Event delegation to table
+
+        function loadModal(element, modalTitle) {
+                $('#municipalityModalLabel').text(modalTitle);
+                const municipalityId = element.data('municipality-id');
+               currentMunicipality  = municipalityId
+
+                $('#municipalityForm')[0].reset(); // Reset form values
+                $('#municipalityForm .form-control').removeClass('is-invalid'); // Reset visual feedback
+                $('#municipalityForm .invalid-feedback').text('');
+
+                $('#municipalityId').val(municipalityId);
+
+
+                if (municipalityId) {  // if we clicked edit
+                    $.ajax({
+                         url: `/superadmin/${municipalityId}/detail/`,
+                        type: 'GET',
+                         dataType: 'json',
+                        success: function(data) {
+                            // Prefill the form for edit
+
+                            $('#name').val(data.municipality.name);
+                            $('#latitude').val(data.municipality.latitude);
+                            $('#longitude').val(data.municipality.longitude);
+                            $('#boundary').val(data.municipality.boundary);
+                            $('#municipalityModal').modal('show');
+
+                        },
+                         error: function() {
+                             alert('There was an issue retrieving the municipality data.');
+                         }
+
+                    });
+
+                } else {
+
+
+                     $('#municipalityModal').modal('show');
+                     $("#municipalityForm").show()
+
+                }
+            }
+
+        // Event handler for "Add municipality" button
+          $('.btn-create-municipality').click(function() {
+                loadModal($(this), "{% trans 'Ajouter une municipalité' %}");
+                $('#municipalityForm').attr('action', "{% url 'superadmin:municipality_create' %}");
+            });
+
+
+       $('#municipality-table-container').on('click', '.btn-update-municipality', function(e) {
+            loadModal($(this), "{% trans 'Modifier la municipalité' %}");
+           const municipalityId = $(this).data('municipality-id')
+           $('#municipalityForm').attr('action', `/superadmin/${municipalityId}/update/`);
+
+       });
+      function deleteElement() {
+            const municipalityId =  currentMunicipality
+
+            $.ajax({
+                url: `/superadmin/${municipalityId}/delete/`,
+                type: 'POST',
+
+                dataType: 'json',
+                success: function(response) {
+                     $('#municipalityModal').modal('hide');
+                    $(`tr[data-municipality-id="${municipalityId}"]`).remove();
+
+                },
+                error: function(error) {
+                    alert('Error deleting municipality.');
+                }
+            });
+        }
+
+
+
+          $('#municipality-table-container').on('click', '.btn-delete-municipality', function(e) {
+            $('#municipalityForm').hide()
+             $('#confirmationDelete').show()
+             $('#municipalityModalLabel').text("{% trans 'Supprimer la municipalité' %}");
+            currentMunicipality = $(this).data('municipality-id');
+
+            $('#municipalityModal').modal('show');
+
+        });
+
+         $('#confirmDelete').click(function() {
+                deleteElement();
+
+            });
+
+
+        // Event handler for edit button
+         $('#municipalityForm').submit(function(e) {
+            e.preventDefault();
+            const form = $(this);
+            const url = form.attr('action'); // URL is now set when we click add/update
+
+
+
+            // Clear previous errors
+            form.find('.form-control').removeClass('is-invalid');
+            form.find('.invalid-feedback').text('');
+            $.ajax({
+                url: url,
+                type: 'POST',
+                data: form.serialize(),
+                dataType: 'json',
+                success: function(response) {
+
+                    if (response.success) {
+                         $('#municipalityModal').modal('hide');
+                         location.reload()// simple list refresh
+
+
+                    } else {
+
+                        if (response.errors) {
+
+
+                            // Show error messages beside the respective fields.
+
+                             for (const field in response.errors) {
+
+                                const input = form.find(`[name="${field}"]`);
+
+
+                                input.addClass('is-invalid');
+
+                                input.next('.invalid-feedback').text(response.errors[field].join(', '));
+                            }
+
+                        }  else {
+
+                            // show all errors such as csrf failures
+                           alert("general save Failure")  // more robust JS would include failure text in modal
+
+
+                        }
+
+                    }
+                },
+                error: function(jqXHR, textStatus, errorThrown) {
+
+                }
+            });
+        });
+    });
+
+
+
+    </script>
+{% endblock %}

@@ -42,9 +42,9 @@
             <div class="space-y-5">
                 <div class="transition-all duration-300 hover:translate-x-1" data-aos="fade-right" data-aos-delay="600">
                     <label for="{{ form.username.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">Nom d'utilisateur ou Email</label> {# Changed label to match form #}
-                    {{ form.username }} {# Input should get classes from forms.py widget #}
-                    {% if form.username.errors %}
-                        <p class="text-red-500 text-xs italic mt-1 animate-pulse">{{ form.username.errors.as_text }}</p>
+                    {{ form.identifier }} {# Input should get classes from forms.py widget #}
+                    {% if form.identifier.errors %}
+                        <p class="text-red-500 text-xs italic mt-1 animate-pulse">{{ form.identifier.errors.as_text }}</p>
                     {% endif %}
                 </div>
                 
