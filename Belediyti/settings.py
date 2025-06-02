@@ -15,6 +15,8 @@ import os # Added for MEDIA_ROOT
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+CHINGUISOFT_VALIDATION_KEY = os.getenv('CHINGUISOFT_VALIDATION_KEY', 'ciSPuRWNvl4HUyUP')
+CHINGUISOFT_VALIDATION_TOKEN = os.getenv('CHINGUISOFT_VALIDATION_TOKEN', '9PfCCPEdLf2HkTWtSNMacYWz9JfByW3F')
 
 
 # Quick-start development settings - unsuitable for production
@@ -25,11 +27,18 @@ SECRET_KEY = 'django-insecure-jgbv+g2ziypwb7hl^cx920f-h8*lt_ixh0i*o5=!-3i=7s0b1(
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
-
+CORS_ORIGIN_ALLOW_ALL = True  # ONLY for development
+# settings.py
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5000",  # Example Flutter web origin
+    "http://127.0.0.1:8000",  # Django backend (if you access it directly)
+   "http://10.0.2.2:8000",  # Add other origins as needed (e.g., your production Flutter web URL)
+]
 ALLOWED_HOSTS = ['127.0.0.1',
                  '192.168.163.95',
                  '192.168.163.95',
                  '192.168.163.198',
+                 "http://10.0.2.2:8000", 
                  '*', # Allow all hosts for now, refine for production
                  ]
 
@@ -46,13 +55,54 @@ INSTALLED_APPS = [
     'Citoyen', # Your app
     'django.contrib.humanize',
     'super_admin',
-    'Muni_admin'
-] 
+    'Muni_admin',
+    'rest_framework',
+    'corsheaders',
+    
+    'rest_framework.authtoken',  # This was the missing piece
+ 
 
+] 
+# settings.py
+import os
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'level': 'DEBUG',  # Set the logging level here
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'loggers': {
+        'Citoyen': {  # Logger for your app ("Citoyen")
+            'handlers': ['console'],
+            'level': 'DEBUG', # Set Logger  level
+            'propagate': True, # Don't propagate to root logger if False
+        },
+        'django': {  # Set logging level to info, for Django log
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+    },
+}
+# settings.py
+REST_FRAMEWORK = {
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.AllowAny'  # Or use IsAuthenticated for production
+    ],
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.SessionAuthentication',  # For browsable API
+        'rest_framework.authentication.TokenAuthentication',  # For Flutter app
+    ],
+}
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',

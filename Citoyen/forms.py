@@ -183,8 +183,9 @@ class CitizenProfileForm(forms.ModelForm):
     class Meta:
         model = Citizen
         # Removed 'phone' as it's now on User model
-        fields = ['full_name', 'address']
+        fields = ['full_name', 'address',"profile_picture"]
         widgets = {
+            "profile_picture":forms.FileInput(attrs={'class': text_input_css}),
             'full_name': forms.TextInput(attrs={'class': text_input_css}),
             'address': forms.TextInput(attrs={'class': text_input_css}),
         }

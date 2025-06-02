@@ -221,7 +221,7 @@ def dashboard(request):
             record_type='PROBLEM',
             record_id__in=resolved_problems.values_list('id', flat=True),
             new_status='RESOLVED'
-        ).select_related('record')
+        )
         
         # Group by category
         category_resolution_times = defaultdict(list)
@@ -334,11 +334,10 @@ def dashboard(request):
 
 from django.shortcuts import get_object_or_404
 from Citoyen.models import Problem, StatusLog # Assuming models are in Citoyen app
-
+from Citoyen.models import Notification
 @login_required
 def problem_detail(request, problem_id):
     # Fetch the specific problem, ensuring it belongs to the admin's municipality (or handle superadmin case)
-    # Note: Adjust filtering based on your exact authorization logic (e.g., superadmin access)
     problem = get_object_or_404(Problem.objects.select_related(
         'citizen', 'category', 'municipality'
     ), pk=problem_id, municipality=request.user.admin_profile.municipality)
@@ -349,19 +348,55 @@ def problem_detail(request, problem_id):
         record_id=problem.id
     ).order_by('-changed_at').select_related('changed_by')
     
+    # Handle status update form submission
+    if request.method == 'POST':
+        old_status = problem.status
+        new_status = request.POST.get('status')
+        comment = request.POST.get('comment', '')
+        
+        if new_status and new_status != old_status:
+            # Update problem status
+            problem.status = new_status
+            problem.comment = comment
+            problem.save()
+            
+            # Create status log entry
+            StatusLog.objects.create(
+                record_type='PROBLEM',
+                record_id=problem.id,
+                old_status=old_status,
+                new_status=new_status,
+                changed_by=request.user,
+                changed_at=timezone.now()
+            )
+            
+            # Optional: Create notification for the citizen
+            Notification.objects.create(
+                user=problem.citizen.user,
+                title=_("Mise à jour de votre signalement"),
+                message=_("Le statut de votre problème a été mis à jour à: {}").format(
+                    dict(Problem.STATUS_CHOICES)[new_status]
+                ),
+                type='PROBLEM_UPDATE',
+                related_id=str(problem.id),
+                related_type='PROBLEM'
+            )
+            
+            # Add success message
+            from django.contrib import messages
+            messages.success(request, _("Statut mis à jour avec succès."))
+            
+            # Redirect to avoid form resubmission
+            from django.shortcuts import redirect
+            return redirect('Muni_admin:problem_detail', problem_id=problem_id)
+    
     # Prepare context for the template
     context = {
         'problem': problem,
         'status_logs': status_logs,
-        'status_choices': Problem.STATUS_CHOICES, # Pass status choices for potential status change form
-        'navName': 'problems', # For navigation highlighting
+        'status_choices': Problem.STATUS_CHOICES,  # Pass status choices for potential status change form
+        'navName': 'problems',  # For navigation highlighting
     }
     
-    # Add logic here if you need to handle POST requests for status updates, comments, etc.
-    # if request.method == 'POST':
-    #     # Handle form submission (e.g., changing status)
-    #     pass
-        
     return render(request, 'muni_admin/problem_detail.html', context)
-
 

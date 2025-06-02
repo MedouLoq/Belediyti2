@@ -55,7 +55,7 @@ class User(AbstractUser):
     user_type = models.CharField(max_length=10, choices=USER_TYPE_CHOICES, default="CITIZEN")
     phone_number = models.CharField(_("Numéro de téléphone"), max_length=20, unique=True, null=True, blank=True)
     email = models.EmailField(_("Adresse e-mail"), unique=True, null=True, blank=True)
-
+    phone_verified = models.BooleanField(default=False, blank=True, null=True)
     # Remove email from required fields if user is CITIZEN
     REQUIRED_FIELDS = [] # No fields required besides username/password by default
     USERNAME_FIELD = "username" # Keep username as the main identifier internally
@@ -90,7 +90,7 @@ class Municipality(models.Model):
     boundary = models.TextField(_("Limites géographiques"), blank=True, null=True)  # Stockage GeoJSON
     created_at = models.DateTimeField(_("Créé le"), auto_now_add=True)
     updated_at = models.DateTimeField(_("Mis à jour le"), auto_now=True)
-
+    
     class Meta:
         verbose_name = _("Municipalité")
         verbose_name_plural = _("Municipalités")
@@ -107,7 +107,7 @@ class Citizen(models.Model):
     address = models.CharField(_("Adresse"), max_length=255, blank=True, null=True)
     created_at = models.DateTimeField(_("Créé le"), auto_now_add=True)
     updated_at = models.DateTimeField(_("Mis à jour le"), auto_now=True)
-
+    profile_picture = models.ImageField(_("Photo de profil"), upload_to="profile_pics/", blank=True, null=True)
     class Meta:
         verbose_name = _("Citoyen")
         verbose_name_plural = _("Citoyens")
@@ -160,7 +160,14 @@ class Problem(models.Model):
     municipality = models.ForeignKey(Municipality, on_delete=models.CASCADE, related_name="problems")
     category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name="problems", blank=True, null=True)
     description = models.TextField(_("Description"))
+    comment = models.TextField(null=True,blank=True)
+        
+    # Media fields (as requested)
     photo = models.ImageField(_("Photo"), upload_to="problem_photos/", blank=True, null=True)
+    video = models.FileField(_("Video"), upload_to="problem_videos/", blank=True, null=True)
+    voice_record = models.FileField(_("Voice Record"), upload_to="problem_voice/", blank=True, null=True)
+    document = models.FileField(_("Document"), upload_to="problem_documents/", blank=True, null=True)
+    
     location = models.CharField(_("Adresse"), max_length=255, blank=True, null=True)
     latitude = models.FloatField(_("Latitude"))
     longitude = models.FloatField(_("Longitude"))
@@ -187,6 +194,12 @@ class Complaint(models.Model):
     subject = models.CharField(_("Sujet"), max_length=255)
     description = models.TextField(_("Description"))
     evidence = models.FileField(_("Evidence"), upload_to="Reclamation_fiche/", blank=True, null=True)
+    comment = models.TextField(null=True,blank=True)
+        
+    # Media fields (as requested)
+    photo = models.ImageField(_("Photo"), upload_to="Reclamation_photos/", blank=True, null=True)
+    video = models.FileField(_("Video"), upload_to="Reclamation_videos/", blank=True, null=True)
+    voice_record = models.FileField(_("Voice Record"), upload_to="Reclamation_voice/", blank=True, null=True)    
     status = models.CharField(_("Statut"), max_length=20, choices=STATUS_CHOICES, default="PENDING")
     created_at = models.DateTimeField(_("Créé le"), auto_now_add=True)
     updated_at = models.DateTimeField(_("Mis à jour le"), auto_now=True)
@@ -211,7 +224,7 @@ class StatusLog(models.Model):
     new_status = models.CharField(_("Nouveau statut"), max_length=20)
     changed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="status_changes")
     changed_at = models.DateTimeField(_("Modifié le"), default=timezone.now)
-
+    comment = models.TextField(blank=True, null=True)
     def get_related_object(self):
         if self.record_type == "PROBLEM":
             return Problem.objects.filter(id=self.record_id).first()
@@ -228,15 +241,43 @@ class StatusLog(models.Model):
 
 # Notifications
 class Notification(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="notifications")
-    type = models.CharField(_("Type"), max_length=50)
-    data = models.JSONField(_("Données"))
-    read_at = models.DateTimeField(_("Lu le"), blank=True, null=True)
-    created_at = models.DateTimeField(_("Créé le"), auto_now_add=True)
-
+    NOTIFICATION_TYPES = (
+        ('PROBLEM_UPDATE', 'Problem Update'),
+        ('COMPLAINT_UPDATE', 'Complaint Update'),
+        ('ANNOUNCEMENT', 'Announcement'),
+        ('OTHER', 'Other'),
+    )
+    
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
+    title = models.CharField(max_length=255, null=True)
+    message = models.TextField(null=True, blank=True)
+    type = models.CharField(max_length=20, choices=NOTIFICATION_TYPES, default='OTHER')
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_read = models.BooleanField(default=False, null=True)
+    related_id = models.CharField(max_length=50, blank=True, null=True)  # UUID of related entity
+    related_type = models.CharField(max_length=20, blank=True, null=True)  # Type of related entity
+    
     class Meta:
-        verbose_name = _("Notification")
-        verbose_name_plural = _("Notifications")
+        ordering = ['-created_at']
+
+class NotificationPreferences(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='notification_preferences')
+    problem_updates = models.BooleanField(default=True)
+    complaint_updates = models.BooleanField(default=True)
+    news_and_announcements = models.BooleanField(default=True)
+    
+    class Meta:
+        verbose_name_plural = 'Notification Preferences'
+
+from django.conf import settings
+
+class VerificationCode(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    code = models.CharField(max_length=6)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def is_expired(self):
+        return timezone.now() > self.created_at + timezone.timedelta(minutes=10)
 
     def __str__(self):
-        return f"Notification pour {self.user} - {self.type}"
+        return f"{self.user.phone_number} - {self.code}"

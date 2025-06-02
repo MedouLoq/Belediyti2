@@ -435,8 +435,8 @@ class StatusLogAdmin(admin.ModelAdmin):
 
 @admin.register(Notification)
 class NotificationAdmin(admin.ModelAdmin):
-    list_display = ("user_link", "type", "read_at", "created_at", "data_preview")
-    list_filter = ("type", "read_at", "created_at")
+    list_display = ('user', 'type', 'is_read', 'created_at')
+    list_filter = ('type', 'is_read')
     search_fields = ("user__username", "type", "data__icontains")
     readonly_fields = ("created_at", "user_link", "data_preview")
     date_hierarchy = "created_at"
