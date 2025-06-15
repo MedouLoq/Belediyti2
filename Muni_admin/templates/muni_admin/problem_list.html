@@ -1,266 +1,996 @@
 {% extends 'muni_admin/base.html' %}
 {% load static %}
 {% load i18n %}
-{# Removed query_transform load #}
 
-{% block title %}{% trans "Gestion des Problèmes" %}{% endblock %}
-{% block header_title %}{% trans "Gestion des Problèmes" %}{% endblock %}
+{% block title %}Gestion des Problèmes - Belediyti{% endblock %}
+{% block page_title %}Gestion des Problèmes{% endblock %}
+{% block page_subtitle %}Suivi et résolution des problèmes signalés{% endblock %}
 
-{% block extra_head %}
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+{% block extra_styles %}
 <style>
-    .filter-section {
-        transition: all 0.3s ease-in-out;
+    /* Enhanced Card Styling */
+    .problem-card {
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        border: 1px solid #e5e7eb;
+        background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
+        position: relative;
+        overflow: hidden;
     }
-    .problem-row {
-        transition: all 0.2s ease-in-out;
-        cursor: pointer;
+    
+    .problem-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, #3b82f6, #8b5cf6, #06b6d4);
+        transform: scaleX(0);
+        transition: transform 0.3s ease;
     }
-    .problem-row:hover {
-        background-color: #f9fafb; /* gray-50 */
-        transform: translateY(-2px);
-        box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+    
+    .problem-card:hover::before {
+        transform: scaleX(1);
     }
-    .status-badge {
-        padding: 0.25rem 0.6rem;
-        border-radius: 9999px; /* pill shape */
-        font-size: 0.75rem; /* text-xs */
-        font-weight: 600; /* font-semibold */
+    
+    .problem-card:hover {
+        transform: translateY(-8px) scale(1.02);
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        border-color: #3b82f6;
+    }
+    
+    /* Improved Filter Chips */
+    .filter-chip {
         display: inline-flex;
         align-items: center;
-        line-height: 1;
+        padding: 0.5rem 1rem;
+        border-radius: 9999px;
+        font-size: 0.875rem;
+        font-weight: 500;
+        background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+        color: #374151;
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        border: 2px solid transparent;
+        position: relative;
+        overflow: hidden;
     }
-    .status-PENDING { background-color: #fef3c7; color: #92400e; } /* yellow-100, yellow-800 */
-    .status-IN_PROGRESS { background-color: #dbeafe; color: #1e40af; } /* blue-100, blue-800 */
-    .status-DELEGATED { background-color: #ede9fe; color: #5b21b6; } /* purple-100, purple-800 */
-    .status-RESOLVED { background-color: #d1fae5; color: #065f46; } /* green-100, green-800 */
-    .status-REJECTED { background-color: #fee2e2; color: #991b1b; } /* red-100, red-800 */
-    .status-default { background-color: #f3f4f6; color: #374151; } /* gray-100, gray-700 */
-
-    /* Animation */
-    .fade-in-up {
+    
+    .filter-chip::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+        transition: left 0.5s;
+    }
+    
+    .filter-chip:hover::before {
+        left: 100%;
+    }
+    
+    .filter-chip.active {
+        background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+        color: white;
+        border-color: #1e40af;
+        box-shadow: 0 4px 14px 0 rgba(59, 130, 246, 0.4);
+    }
+    
+    .filter-chip:hover:not(.active) {
+        background: linear-gradient(135deg, #e5e7eb 0%, #d1d5db 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+    
+    /* Enhanced Search Input */
+    .search-container {
+        position: relative;
+        overflow: hidden;
+        border-radius: 0.75rem;
+    }
+    
+    .search-container::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(45deg, #3b82f6, #8b5cf6);
+        padding: 2px;
+        border-radius: 0.75rem;
+        z-index: -1;
+    }
+    
+    .search-input {
+        background: white;
+        border-radius: 0.625rem;
+        transition: all 0.3s ease;
+    }
+    
+    .search-input:focus {
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+    
+    /* Improved Grid Layout */
+    .problem-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+        gap: 2rem;
+        padding: 1rem 0;
+    }
+    
+    @media (max-width: 768px) {
+        .problem-grid {
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+        }
+        
+        .problem-card {
+            margin: 0 0.5rem;
+        }
+    }
+    
+    /* Enhanced Priority Indicators */
+    .priority-indicator {
+        position: absolute;
+        top: 1.5rem;
+        right: 1.5rem;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        animation: pulse 2s infinite;
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+    }
+    
+    .priority-high { 
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        box-shadow: 0 0 20px rgba(239, 68, 68, 0.5);
+    }
+    .priority-medium { 
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        box-shadow: 0 0 20px rgba(245, 158, 11, 0.5);
+    }
+    .priority-low { 
+        background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+        box-shadow: 0 0 20px rgba(34, 197, 94, 0.5);
+    }
+    
+    /* Enhanced Media Previews */
+    .media-preview {
+        width: 70px;
+        height: 70px;
+        border-radius: 12px;
+        object-fit: cover;
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        border: 3px solid transparent;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .media-preview::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(45deg, rgba(59, 130, 246, 0.2), rgba(139, 92, 246, 0.2));
         opacity: 0;
-        animation: fadeInUp 0.5s ease-out forwards;
+        transition: opacity 0.3s ease;
     }
-    .stagger-fade {
-        opacity: 0;
-        /* Animation will be applied via JS */
+    
+    .media-preview:hover {
+        transform: scale(1.15) rotate(5deg);
+        border-color: #3b82f6;
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
     }
-    @keyframes fadeInUp {
-        from { opacity: 0; transform: translateY(20px); }
-        to { opacity: 1; transform: translateY(0); }
+    
+    .media-preview:hover::before {
+        opacity: 1;
+    }
+    
+    /* Modern Status Badges */
+    .status-badge {
+        padding: 0.375rem 0.875rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        border: 2px solid;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .status-pending {
+        background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+        color: #92400e;
+        border-color: #f59e0b;
+    }
+    
+    .status-in_progress {
+        background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+        color: #1e40af;
+        border-color: #3b82f6;
+    }
+    
+    .status-resolved {
+        background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+        color: #065f46;
+        border-color: #10b981;
+    }
+    
+    .status-urgent {
+        background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+        color: #991b1b;
+        border-color: #ef4444;
+        animation: pulse 2s infinite;
+    }
+    
+    /* Enhanced Pagination */
+    .pagination-modern {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 2rem 0;
+    }
+    
+    .pagination-modern .page-btn {
+        width: 3rem;
+        height: 3rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 0.75rem;
+        border: 2px solid #e5e7eb;
+        color: #6b7280;
+        font-weight: 500;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .pagination-modern .page-btn::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.1), transparent);
+        transition: left 0.5s;
+    }
+    
+    .pagination-modern .page-btn:hover::before {
+        left: 100%;
+    }
+    
+    .pagination-modern .page-btn:hover {
+        border-color: #3b82f6;
+        color: #3b82f6;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+    }
+    
+    .pagination-modern .page-btn.active {
+        background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+        color: white;
+        border-color: #1e40af;
+        box-shadow: 0 4px 14px rgba(59, 130, 246, 0.4);
+    }
+    
+    /* Enhanced View Toggle */
+    .view-toggle {
+        display: flex;
+        background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+        border-radius: 0.75rem;
+        padding: 0.25rem;
+        border: 2px solid #d1d5db;
+    }
+    
+    .view-toggle button {
+        padding: 0.75rem 1.5rem;
+        border-radius: 0.5rem;
+        font-size: 0.875rem;
+        font-weight: 500;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .view-toggle button::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+        transition: left 0.5s;
+    }
+    
+    .view-toggle button:hover::before {
+        left: 100%;
+    }
+    
+    .view-toggle button.active {
+        background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+        color: #3b82f6;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        border: 1px solid #3b82f6;
+    }
+    
+    .view-toggle button:not(.active) {
+        color: #6b7280;
+    }
+    
+    .view-toggle button:not(.active):hover {
+        color: #374151;
+        background: rgba(255, 255, 255, 0.5);
+    }
+    
+    /* Enhanced Cards */
+    .card {
+        background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
+        border: 1px solid #e5e7eb;
+        border-radius: 1rem;
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease;
+    }
+    
+    .card:hover {
+        box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.1);
+    }
+    
+    /* Enhanced Buttons */
+    .btn-primary {
+        background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+        border: 2px solid #1e40af;
+        color: white;
+        padding: 0.75rem 1.5rem;
+        border-radius: 0.75rem;
+        font-weight: 600;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .btn-primary::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+        transition: left 0.5s;
+    }
+    
+    .btn-primary:hover::before {
+        left: 100%;
+    }
+    
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
+    }
+    
+    .btn-secondary {
+        background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+        border: 2px solid #d1d5db;
+        color: #374151;
+        padding: 0.75rem 1.5rem;
+        border-radius: 0.75rem;
+        font-weight: 600;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .btn-secondary:hover {
+        background: linear-gradient(135deg, #e5e7eb 0%, #d1d5db 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    
+    /* Enhanced Form Inputs */
+    .form-input {
+        border: 2px solid #e5e7eb;
+        border-radius: 0.75rem;
+        padding: 0.75rem 1rem;
+        transition: all 0.3s ease;
+        background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
+    }
+    
+    .form-input:focus {
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        background: white;
+    }
+    
+    /* Enhanced Table */
+    .table-container {
+        border-radius: 1rem;
+        overflow: hidden;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+    
+    .table-row:hover {
+        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    }
+    
+    /* Enhanced Modal - FIXED */
+    .modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.75);
+        backdrop-filter: blur(4px);
+        z-index: 50;
+        display: none; /* Hidden by default */
+    }
+    
+    .modal-overlay.show {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .modal-container {
+        background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
+        border-radius: 1.5rem;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        border: 1px solid #e5e7eb;
+        max-width: 90vw;
+        max-height: 90vh;
+        overflow: auto;
+    }
+    
+    /* Close button styling */
+    .modal-close-btn {
+        background: #f3f4f6;
+        border: 2px solid #e5e7eb;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    
+    .modal-close-btn:hover {
+        background: #ef4444;
+        border-color: #dc2626;
+        color: white;
+        transform: scale(1.1);
+    }
+    
+    /* Responsive Improvements */
+    @media (max-width: 640px) {
+        .problem-grid {
+            padding: 0.5rem;
+        }
+        
+        .filter-chip {
+            padding: 0.375rem 0.75rem;
+            font-size: 0.75rem;
+        }
+        
+        .pagination-modern .page-btn {
+            width: 2.5rem;
+            height: 2.5rem;
+        }
     }
 </style>
 {% endblock %}
 
 {% block content %}
-    <div class="bg-white shadow rounded-lg p-6 mb-6 animate__animated animate__fadeIn">
-        <h1 class="text-2xl font-semibold text-secondary-800 mb-4">{% trans "Liste des Problèmes" %}</h1>
-
-        <!-- Filter Form -->
-        <form method="get" action="" class="mb-6 bg-gray-50 p-4 rounded-lg border border-gray-200 filter-section">
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
-                <!-- Search field -->
-                <div>
-                    <label for="search" class="block text-sm font-medium text-secondary-700 mb-1">{% trans "Recherche" %}</label>
-                    <div class="relative">
-                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <i class="fas fa-search text-gray-400"></i>
-                        </div>
-                        <input type="text" name="search" id="search" value="{{ request.GET.search }}" placeholder="{% trans 'Description, Adresse...' %}"
-                               class="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500">
-                    </div>
+<div class="space-y-8 p-6 bg-gradient-to-br from-gray-50 to-blue-50 min-h-screen" x-data="problemList()">
+    <!-- Enhanced Header -->
+    <div class="card p-8">
+        <div class="flex flex-wrap items-center justify-between gap-6 mb-8">
+            <div>
+                <h1 class="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                    Gestion des Problèmes
+                </h1>
+                <p class="text-gray-600 mt-2 text-lg">Suivi et résolution des problèmes signalés</p>
+            </div>
+            
+            <div class="flex items-center space-x-4">
+                <!-- View Toggle -->
+                <div class="view-toggle">
+                    <button 
+                        @click="viewMode = 'grid'" 
+                        :class="viewMode === 'grid' ? 'active' : ''"
+                    >
+                        <i class="fas fa-th-large mr-2"></i>Grille
+                    </button>
+                    <button 
+                        @click="viewMode = 'list'" 
+                        :class="viewMode === 'list' ? 'active' : ''"
+                    >
+                        <i class="fas fa-list mr-2"></i>Liste
+                    </button>
                 </div>
-                <!-- Status Filter -->
-                <div>
-                    <label for="status" class="block text-sm font-medium text-secondary-700 mb-1">{% trans "Statut" %}</label>
-                    <select name="status" id="status" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 bg-white">
-                        <option value="">{% trans "Tous les statuts" %}</option>
-                        {% for value, label in status_choices %}
-                            <option value="{{ value }}" {% if request.GET.status == value %}selected{% endif %}>{{ label }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <!-- Category Filter -->
-                <div>
-                    <label for="category" class="block text-sm font-medium text-secondary-700 mb-1">{% trans "Catégorie" %}</label>
-                    <select name="category" id="category" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 bg-white">
-                        <option value="">{% trans "Toutes les catégories" %}</option>
-                        {% for category in categories %}
-                            <option value="{{ category.id }}" {% if request.GET.category == category.id|stringformat:"s" %}selected{% endif %}>
-                                {{ category.name }}
-                            </option>
-                        {% endfor %}
-                    </select>
+                
+                <!-- Advanced Filters -->
+                <button 
+                    @click="showAdvancedFilters = !showAdvancedFilters" 
+                    class="btn-secondary flex items-center space-x-2"
+                >
+                    <i class="fas fa-filter"></i>
+                    <span>Filtres avancés</span>
+                    <i class="fas fa-chevron-down transition-transform duration-200" :class="{ 'rotate-180': showAdvancedFilters }"></i>
+                </button>
+                
+                <!-- Export -->
+                <button @click="exportProblems()" class="btn-primary flex items-center space-x-2">
+                    <i class="fas fa-download"></i>
+                    <span>Exporter</span>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Enhanced Search and Filters -->
+        <div class="flex flex-col lg:flex-row items-start lg:items-center gap-6">
+            <!-- Search -->
+            <div class="search-container flex-1 max-w-md">
+                <div class="relative">
+                    <input 
+                        type="text" 
+                        x-model="searchTerm" 
+                        @input.debounce.300ms="applyFilters()"
+                        placeholder="Rechercher des problèmes..." 
+                        class="search-input form-input w-full pl-12 pr-12"
+                    >
+                    <i class="fas fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                    <button 
+                        x-show="searchTerm" 
+                        @click="searchTerm = ''; applyFilters()" 
+                        class="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                    >
+                        <i class="fas fa-times"></i>
+                    </button>
                 </div>
             </div>
-
-            <div class="flex items-center justify-start space-x-3">
-                <button type="submit" class="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition duration-150 ease-in-out">
-                    <i class="fas fa-filter mr-2"></i> {% trans "Filtrer" %}
+            
+            <!-- Quick Filters -->
+            <div class="flex items-center space-x-3 flex-wrap">
+                <span class="text-sm font-semibold text-gray-700">Filtres rapides:</span>
+                <button 
+                    @click="toggleQuickFilter('pending')" 
+                    :class="quickFilters.includes('pending') ? 'filter-chip active' : 'filter-chip'"
+                >
+                    <i class="fas fa-clock mr-2"></i>En attente
                 </button>
-                <a href="{% url 'Muni_admin:problems' %}" class="px-4 py-2 bg-gray-200 text-secondary-700 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition duration-150 ease-in-out">
-                    <i class="fas fa-times mr-2"></i> {% trans "Réinitialiser" %}
+                <button 
+                    @click="toggleQuickFilter('urgent')" 
+                    :class="quickFilters.includes('urgent') ? 'filter-chip active' : 'filter-chip'"
+                >
+                    <i class="fas fa-exclamation-triangle mr-2"></i>Urgent
+                </button>
+                <button 
+                    @click="toggleQuickFilter('today')" 
+                    :class="quickFilters.includes('today') ? 'filter-chip active' : 'filter-chip'"
+                >
+                    <i class="fas fa-calendar-day mr-2"></i>Aujourd'hui
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Advanced Filters Panel -->
+    <div 
+        x-show="showAdvancedFilters" 
+        x-transition:enter="transition ease-out duration-300"
+        x-transition:enter-start="opacity-0 transform -translate-y-4"
+        x-transition:enter-end="opacity-100 transform translate-y-0"
+        x-transition:leave="transition ease-in duration-200"
+        x-transition:leave-start="opacity-100 transform translate-y-0"
+        x-transition:leave-end="opacity-0 transform -translate-y-4"
+        class="card p-8"
+        x-cloak
+    >
+        <h3 class="text-lg font-semibold text-gray-900 mb-6">Filtres avancés</h3>
+        <form method="get" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-3">Statut</label>
+                <select name="status" class="form-input w-full">
+                    <option value="">Tous les statuts</option>
+                    {% for value, label in status_choices %}
+                        <option value="{{ value }}" {% if request.GET.status == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-3">Catégorie</label>
+                <select name="category" class="form-input w-full">
+                    <option value="">Toutes les catégories</option>
+                    {% for category in categories %}
+                        <option value="{{ category.id }}" {% if request.GET.category == category.id|stringformat:"s" %}selected{% endif %}>
+                            {{ category.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-3">Date de création</label>
+                <input type="date" name="date_from" value="{{ request.GET.date_from }}" class="form-input w-full">
+            </div>
+            
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-3">Date de fin</label>
+                <input type="date" name="date_to" value="{{ request.GET.date_to }}" class="form-input w-full">
+            </div>
+            
+            <div class="md:col-span-2 lg:col-span-4 flex items-center space-x-4 pt-4">
+                <button type="submit" class="btn-primary">
+                    <i class="fas fa-search mr-2"></i>Appliquer les filtres
+                </button>
+                <a href="{% url 'Muni_admin:problems' %}" class="btn-secondary">
+                    <i class="fas fa-times mr-2"></i>Réinitialiser
                 </a>
             </div>
         </form>
-
-        <div id="problem-list-container" class="overflow-x-auto">
+    </div>
+    
+    <!-- Results Summary -->
+    <div class="flex items-center justify-between bg-white rounded-lg p-4 shadow-sm border">
+        <div class="text-sm font-medium text-gray-600">
             {% if problems.object_list %}
-                <div class="border border-gray-200 rounded-lg overflow-hidden">
-                    <table class="min-w-full bg-white">
-                        <thead class="bg-gray-100">
-                            <tr>
-                                <th class="py-3 px-6 text-left text-xs font-medium text-secondary-600 uppercase tracking-wider">{% trans "Description" %}</th>
-                                <th class="py-3 px-6 text-left text-xs font-medium text-secondary-600 uppercase tracking-wider">{% trans "Adresse" %}</th>
-                                <th class="py-3 px-6 text-left text-xs font-medium text-secondary-600 uppercase tracking-wider">{% trans "Catégorie" %}</th>
-                                <th class="py-3 px-6 text-left text-xs font-medium text-secondary-600 uppercase tracking-wider">{% trans "Signalé le" %}</th>
-                                <th class="py-3 px-6 text-left text-xs font-medium text-secondary-600 uppercase tracking-wider">{% trans "Statut" %}</th>
-                                <th class="py-3 px-6 text-left text-xs font-medium text-secondary-600 uppercase tracking-wider">{% trans "Actions" %}</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-200">
-                        {% for problem in problems.object_list %}
-                            {# Removed style="animation-delay: ..." - will be added by JS #}
-                            <tr data-problem-id="{{ problem.id }}" class="problem-row stagger-fade" onclick="window.location.href='{% url 'Muni_admin:problem_detail' problem.id %}';">
-                                <td class="py-4 px-6 text-sm font-medium text-secondary-900 max-w-xs truncate" title="{{ problem.description }}">{{ problem.description|truncatechars:80 }}</td>
-                                <td class="py-4 px-6 text-sm text-secondary-700 max-w-xs truncate" title="{{ problem.location }}">{{ problem.location|default:"N/A" }}</td>
-                                <td class="py-4 px-6 text-sm text-secondary-700">{{ problem.category.name|default:"N/A" }}</td>
-                                <td class="py-4 px-6 text-sm text-secondary-600 whitespace-nowrap">{{ problem.created_at|date:"d/m/Y H:i" }}</td>
-                                <td class="py-4 px-6 text-sm">
-                                    <span class="status-badge status-{{ problem.status|default:'default' }}">
-                                        {{ problem.get_status_display }}
-                                    </span>
-                                </td>
-                                <td class="py-4 px-6 text-sm whitespace-nowrap">
-                                    <a href="{% url 'Muni_admin:problem_detail' problem.id %}" class="text-primary-600 hover:text-primary-800 transition duration-150 ease-in-out" onclick="event.stopPropagation();">
-                                        <i class="fas fa-eye mr-1"></i> {% trans "Voir" %}
-                                    </a>
-                                    {# Add other actions like edit/delete if needed, ensure stopPropagation #}
-                                    {# <a href="#" class="text-yellow-600 hover:text-yellow-800 ml-3" onclick="event.stopPropagation();"><i class="fas fa-edit"></i></a> #}
-                                    {# <a href="#" class="text-red-600 hover:text-red-800 ml-3" onclick="event.stopPropagation();"><i class="fas fa-trash"></i></a> #}
-                                </td>
-                            </tr>
-                        {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-
-                <!-- Pagination -->
-                {% if problems.has_other_pages %}
-                    <div class="mt-6 flex flex-col md:flex-row justify-between items-center space-y-3 md:space-y-0 fade-in-up">
-                        <div class="text-sm text-secondary-600">
-                            {% blocktrans with start=problems.start_index end=problems.end_index count=problems.paginator.count %}
-                            Affichage de {{ start }} à {{ end }} sur {{ count }} problèmes
-                            {% endblocktrans %}
-                        </div>
-                        <nav aria-label="Page navigation">
-                            {% with base_query=request.GET.urlencode %}
-                            <ul class="inline-flex items-center -space-x-px">
-                                {# Previous Link #}
-                                <li>
-                                    {% if problems.has_previous %}
-                                        <a href="?{{ base_query }}&page={{ problems.previous_page_number }}"
-                                           class="py-2 px-3 ml-0 leading-tight text-gray-500 bg-white rounded-l-lg border border-gray-300 hover:bg-gray-100 hover:text-gray-700 transition duration-150 ease-in-out">
-                                            <span class="sr-only">{% trans "Previous" %}</span>
-                                            <i class="fas fa-chevron-left w-3 h-3"></i>
-                                        </a>
-                                    {% else %}
-                                        <span class="py-2 px-3 ml-0 leading-tight text-gray-300 bg-white rounded-l-lg border border-gray-300 cursor-not-allowed">
-                                            <span class="sr-only">{% trans "Previous" %}</span>
-                                            <i class="fas fa-chevron-left w-3 h-3"></i>
-                                        </span>
-                                    {% endif %}
-                                </li>
-                                {# Page Numbers #}
-                                {% for page_num in problems.paginator.page_range %}
-                                    {% if problems.number == page_num %}
-                                        <li>
-                                            <span aria-current="page" class="z-10 py-2 px-3 leading-tight text-primary-600 bg-primary-50 border border-primary-300 hover:bg-primary-100 hover:text-primary-700">{{ page_num }}</span>
-                                        </li>
-                                    {% elif page_num > problems.number|add:'-3' and page_num < problems.number|add:'3' %}
-                                        <li>
-                                            <a href="?{{ base_query }}&page={{ page_num }}"
-                                               class="py-2 px-3 leading-tight text-gray-500 bg-white border border-gray-300 hover:bg-gray-100 hover:text-gray-700 transition duration-150 ease-in-out">{{ page_num }}</a>
-                                        </li>
-                                    {% elif page_num == problems.number|add:'-3' or page_num == problems.number|add:'3' %}
-                                        <li>
-                                            <span class="py-2 px-3 leading-tight text-gray-500 bg-white border border-gray-300">...</span>
-                                        </li>
-                                    {% endif %}
-                                {% endfor %}
-                                {# Next Link #}
-                                <li>
-                                    {% if problems.has_next %}
-                                        <a href="?{{ base_query }}&page={{ problems.next_page_number }}"
-                                           class="py-2 px-3 leading-tight text-gray-500 bg-white rounded-r-lg border border-gray-300 hover:bg-gray-100 hover:text-gray-700 transition duration-150 ease-in-out">
-                                            <span class="sr-only">{% trans "Next" %}</span>
-                                            <i class="fas fa-chevron-right w-3 h-3"></i>
-                                        </a>
-                                    {% else %}
-                                        <span class="py-2 px-3 leading-tight text-gray-300 bg-white rounded-r-lg border border-gray-300 cursor-not-allowed">
-                                            <span class="sr-only">{% trans "Next" %}</span>
-                                            <i class="fas fa-chevron-right w-3 h-3"></i>
-                                        </span>
-                                    {% endif %}
-                                </li>
-                            </ul>
-                            {% endwith %}
-                        </nav>
-                    </div>
-                {% endif %}
+                Affichage de <span class="font-bold text-blue-600">{{ problems.start_index }}</span> à <span class="font-bold text-blue-600">{{ problems.end_index }}</span> sur <span class="font-bold text-blue-600">{{ problems.paginator.count }}</span> problèmes
             {% else %}
-                {# Empty State Message #}
-                <div class="empty-table-message bg-gray-50 p-12 text-center rounded-lg border border-dashed border-gray-300 fade-in-up">
-                    <div class="inline-block bg-yellow-100 p-4 rounded-full mb-4">
-                         <i class="fas fa-folder-open text-yellow-500 text-4xl"></i>
+                <span class="text-red-600 font-semibold">Aucun problème trouvé</span>
+            {% endif %}
+        </div>
+        
+        <div class="flex items-center space-x-3">
+            <span class="text-sm font-medium text-gray-600">Trier par:</span>
+            <select x-model="sortBy" @change="applySort()" class="form-input w-auto">
+                <option value="-created_at">Plus récent</option>
+                <option value="created_at">Plus ancien</option>
+                <option value="status">Statut</option>
+                <option value="category">Catégorie</option>
+            </select>
+        </div>
+    </div>
+    
+    <!-- Problems Grid -->
+    <div x-show="viewMode === 'grid'" class="problem-grid">
+        {% for problem in problems.object_list %}
+        <div class="card problem-card p-8 relative cursor-pointer" @click="window.location.href='{% url 'Muni_admin:problem_detail' problem.id %}'">
+            <!-- Priority Indicator -->
+            <div class="priority-indicator priority-medium"></div>
+            
+            <!-- Header -->
+            <div class="flex items-start justify-between mb-6">
+                <div class="flex-1 pr-4">
+                    <h3 class="font-bold text-gray-900 mb-3 line-clamp-2 text-lg leading-tight">
+                        {{ problem.description|truncatechars:80 }}
+                    </h3>
+                    <div class="flex items-center space-x-2 text-sm text-gray-500 mb-3">
+                        <i class="fas fa-map-marker-alt text-red-500"></i>
+                        <span class="font-medium">{{ problem.location|default:"Localisation non spécifiée" }}</span>
                     </div>
-                    <h3 class="text-lg font-medium text-secondary-800 mb-1">{% trans "Aucun problème trouvé" %}</h3>
-                    <p class="text-secondary-600">
-                        {% if request.GET.search or request.GET.status or request.GET.category %}
-                            {% trans "Essayez d'ajuster vos filtres ou de réinitialiser la recherche." %}
-                        {% else %}
-                            {% trans "Aucun problème n'a encore été signalé pour cette municipalité." %}
-                        {% endif %}
-                    </p>
-                    {% if request.GET.search or request.GET.status or request.GET.category %}
-                        <a href="{% url 'Muni_admin:problems' %}" class="mt-4 inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition duration-150 ease-in-out">
-                            <i class="fas fa-undo mr-2"></i> {% trans "Réinitialiser les filtres" %}
-                        </a>
+                </div>
+                <span class="status-badge status-{{ problem.status|lower }}">
+                    {{ problem.get_status_display }}
+                </span>
+            </div>
+            
+            <!-- Media Preview -->
+            {% if problem.photo or problem.video or problem.voice_record or problem.document %}
+            <div class="mb-6">
+                <div class="flex items-center space-x-2 mb-3">
+                    <i class="fas fa-paperclip text-blue-500"></i>
+                    <span class="text-sm font-semibold text-gray-700">Pièces jointes:</span>
+                </div>
+                <div class="flex items-center space-x-3">
+                    {% if problem.photo %}
+                        <img src="{{ problem.photo.url }}" alt="Photo" class="media-preview" @click.stop="openMediaModal('{{ problem.photo.url }}', 'image')">
+                    {% endif %}
+                    {% if problem.video %}
+                        <div class="media-preview bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center" @click.stop="openMediaModal('{{ problem.video.url }}', 'video')">
+                            <i class="fas fa-play text-blue-600 text-xl"></i>
+                        </div>
+                    {% endif %}
+                    {% if problem.voice_record %}
+                        <div class="media-preview bg-gradient-to-br from-green-100 to-green-200 flex items-center justify-center" @click.stop="openMediaModal('{{ problem.voice_record.url }}', 'audio')">
+                            <i class="fas fa-microphone text-green-600 text-xl"></i>
+                        </div>
+                    {% endif %}
+                    {% if problem.document %}
+                        <div class="media-preview bg-gradient-to-br from-purple-100 to-purple-200 flex items-center justify-center" @click.stop="window.open('{{ problem.document.url }}', '_blank')">
+                            <i class="fas fa-file text-purple-600 text-xl"></i>
+                        </div>
                     {% endif %}
                 </div>
+            </div>
+            {% endif %}
+            
+            <!-- Footer -->
+            <div class="flex items-center justify-between pt-6 border-t-2 border-gray-100">
+                <div class="flex items-center space-x-6 text-sm text-gray-500">
+                    <div class="flex items-center space-x-2">
+                        <i class="fas fa-tag text-blue-500"></i>
+                        <span class="font-medium">{{ problem.category.name|default:"Sans catégorie" }}</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <i class="fas fa-clock text-green-500"></i>
+                        <span class="font-medium">{{ problem.created_at|timesince }} ago</span>
+                    </div>
+                </div>
+                <button 
+                    @click.stop="quickStatusUpdate('{{ problem.id }}', '{{ problem.status }}')"
+                    class="bg-gradient-to-r from-blue-500 to-purple-500 text-white px-4 py-2 rounded-lg font-semibold text-sm hover:from-blue-600 hover:to-purple-600 transition-all duration-300 transform hover:scale-105"
+                >
+                    Mettre à jour
+                </button>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-span-full">
+            <div class="text-center py-16 card">
+                <div class="w-24 h-24 bg-gradient-to-br from-blue-100 to-purple-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <i class="fas fa-search text-blue-500 text-3xl"></i>
+                </div>
+                <h3 class="text-xl font-bold text-gray-900 mb-3">Aucun problème trouvé</h3>
+                <p class="text-gray-600 mb-6 max-w-md mx-auto">
+                    {% if request.GET.search or request.GET.status or request.GET.category %}
+                        Essayez d'ajuster vos filtres ou de réinitialiser la recherche.
+                    {% else %}
+                        Aucun problème n'a encore été signalé pour cette municipalité.
+                    {% endif %}
+                </p>
+                {% if request.GET.search or request.GET.status or request.GET.category %}
+                    <a href="{% url 'Muni_admin:problems' %}" class="btn-primary">
+                        <i class="fas fa-undo mr-2"></i>Réinitialiser les filtres
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    
+    <!-- List View -->
+    <div x-show="viewMode === 'list'" class="table-container" x-cloak>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gradient-to-r from-gray-50 to-blue-50">
+                    <tr>
+                        <th class="px-8 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                            Problème
+                        </th>
+                        <th class="px-8 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                            Localisation
+                        </th>
+                        <th class="px-8 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                            Catégorie
+                        </th>
+                        <th class="px-8 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                            Statut
+                        </th>
+                        <th class="px-8 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                            Date
+                        </th>
+                        <th class="px-8 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                            Actions
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for problem in problems.object_list %}
+                    <tr class="table-row hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 cursor-pointer transition-all duration-300" @click="window.location.href='{% url 'Muni_admin:problem_detail' problem.id %}'">
+                        <td class="px-8 py-6">
+                            <div class="flex items-start space-x-4">
+                                {% if problem.photo %}
+                                    <img src="{{ problem.photo.url }}" alt="Photo" class="w-16 h-16 rounded-xl object-cover border-2 border-gray-200">
+                                {% else %}
+                                    <div class="w-16 h-16 bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl flex items-center justify-center border-2 border-gray-200">
+                                        <i class="fas fa-image text-gray-400 text-xl"></i>
+                                    </div>
+                                {% endif %}
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-sm font-bold text-gray-900 truncate mb-2">
+                                        {{ problem.description|truncatechars:60 }}
+                                    </p>
+                                    <div class="flex items-center space-x-3 mt-2">
+                                        {% if problem.video %}<i class="fas fa-video text-blue-500"></i>{% endif %}
+                                        {% if problem.voice_record %}<i class="fas fa-microphone text-green-500"></i>{% endif %}
+                                        {% if problem.document %}<i class="fas fa-file text-purple-500"></i>{% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-8 py-6 text-sm font-medium text-gray-600">
+                            {{ problem.location|default:"Non spécifiée" }}
+                        </td>
+                        <td class="px-8 py-6 text-sm font-medium text-gray-600">
+                            {{ problem.category.name|default:"Sans catégorie" }}
+                        </td>
+                        <td class="px-8 py-6">
+                            <span class="status-badge status-{{ problem.status|lower }}">
+                                {{ problem.get_status_display }}
+                            </span>
+                        </td>
+                        <td class="px-8 py-6 text-sm font-medium text-gray-600">
+                            {{ problem.created_at|date:"d/m/Y H:i" }}
+                        </td>
+                        <td class="px-8 py-6 text-sm">
+                            <div class="flex items-center space-x-3">
+                                <a href="{% url 'Muni_admin:problem_detail' problem.id %}" @click.stop class="bg-blue-500 text-white px-3 py-2 rounded-lg font-semibold hover:bg-blue-600 transition-colors">
+                                    Voir
+                                </a>
+                                <button @click.stop="quickStatusUpdate('{{ problem.id }}', '{{ problem.status }}')" class="text-gray-500 hover:text-blue-500 transition-colors">
+                                    <i class="fas fa-edit text-lg"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <!-- Enhanced Pagination -->
+    {% if problems.has_other_pages %}
+    <div class="flex items-center justify-between bg-white rounded-lg p-6 shadow-sm border">
+        <div class="text-sm font-medium text-gray-600">
+            Page <span class="font-bold text-blue-600">{{ problems.number }}</span> sur <span class="font-bold text-blue-600">{{ problems.paginator.num_pages }}</span>
+        </div>
+        
+        <div class="pagination-modern">
+            {% if problems.has_previous %}
+                <a href="?{{ request.GET.urlencode }}&page={{ problems.previous_page_number }}" class="page-btn">
+                    <i class="fas fa-chevron-left"></i>
+                </a>
+            {% endif %}
+            
+            {% for page_num in problems.paginator.page_range %}
+                {% if problems.number == page_num %}
+                    <span class="page-btn active">{{ page_num }}</span>
+                {% elif page_num > problems.number|add:'-3' and page_num < problems.number|add:'3' %}
+                    <a href="?{{ request.GET.urlencode }}&page={{ page_num }}" class="page-btn">{{ page_num }}</a>
+                {% elif page_num == problems.number|add:'-3' or page_num == problems.number|add:'3' %}
+                    <span class="page-btn">...</span>
+                {% endif %}
+            {% endfor %}
+            
+            {% if problems.has_next %}
+                <a href="?{{ request.GET.urlencode }}&page={{ problems.next_page_number }}" class="page-btn">
+                    <i class="fas fa-chevron-right"></i>
+                </a>
             {% endif %}
         </div>
     </div>
+    {% endif %}
+</div>
+
+<!-- FIXED Media Modal -->
+<div id="mediaModal" class="modal-overlay" @click="closeMediaModal()">
+    <div class="modal-container max-w-5xl w-full p-8" @click.stop>
+        <div class="flex items-center justify-between mb-6">
+            <h3 class="text-xl font-bold text-gray-900">Aperçu du média</h3>
+            <button @click="closeMediaModal()" class="modal-close-btn">
+                <i class="fas fa-times text-lg"></i>
+            </button>
+        </div>
+        <div class="text-center" id="mediaContent">
+            <!-- Media content will be inserted here -->
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_scripts %}
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Apply staggered animation delays using JavaScript
-        const rowsToAnimate = document.querySelectorAll('.stagger-fade');
-        rowsToAnimate.forEach((row, index) => {
-            const delay = index * 0.05; // Calculate delay based on index
-            row.style.animation = `fadeInUp 0.5s ${delay}s ease-out forwards`;
-        });
+function problemList() {
+    return {
+        viewMode: 'grid',
+        searchTerm: '{{ request.GET.search|default:"" }}',
+        sortBy: '-created_at',
+        quickFilters: [],
+        showAdvancedFilters: false,
+        
+        init() {
+            // Initialize any required functionality
+        },
+        
+        toggleQuickFilter(filter) {
+            const index = this.quickFilters.indexOf(filter);
+            if (index > -1) {
+                this.quickFilters.splice(index, 1);
+            } else {
+                this.quickFilters.push(filter);
+            }
+            this.applyFilters();
+        },
+        
+        applyFilters() {
+            // Build URL with current filters
+            const params = new URLSearchParams(window.location.search);
+            
+            if (this.searchTerm) {
+                params.set('search', this.searchTerm);
+            } else {
+                params.delete('search');
+            }
+            
+            // Apply quick filters logic here
+            // This would need to be implemented based on your specific requirements
+            
+            // Update URL without page reload for better UX
+            const newUrl = `${window.location.pathname}?${params.toString()}`;
+            window.history.pushState({}, '', newUrl);
+            
+            // In a real implementation, you might want to use HTMX or fetch to update content
+        },
+        
+        applySort() {
+            const params = new URLSearchParams(window.location.search);
+            params.set('sort', this.sortBy);
+            window.location.href = `${window.location.pathname}?${params.toString()}`;
+        },
+        
+        exportProblems() {
+            // Show a simple alert for now
+            alert('Export en cours...');
+            // Implement export functionality
+        },
+        
+        quickStatusUpdate(problemId, currentStatus) {
+            // Implement quick status update modal or dropdown
+            alert('Fonctionnalité de mise à jour rapide à implémenter');
+        }
+    }
+}
 
-        // Make table rows clickable (alternative to inline onclick, handles edge cases better)
-        const rows = document.querySelectorAll('.problem-row');
-        rows.forEach(row => {
-            const link = row.querySelector('a'); // Find the primary action link (e.g., the 'Voir' link)
-            const detailUrlMatch = row.getAttribute('onclick')?.match(/window\.location\.href='([^']*)'/);
-            const targetUrl = detailUrlMatch ? detailUrlMatch[1] : (link ? link.href : null);
+// Fixed Modal Functions
+function openMediaModal(url, type) {
+    const modal = document.getElementById('mediaModal');
+    const content = document.getElementById('mediaContent');
+    
+    // Clear previous content
+    content.innerHTML = '';
+    
+    // Add new content based on type
+    if (type === 'image') {
+        content.innerHTML = `<img src="${url}" alt="Image" class="max-w-full max-h-96 mx-auto rounded-xl shadow-lg">`;
+    } else if (type === 'video') {
+        content.innerHTML = `<video src="${url}" controls class="max-w-full max-h-96 mx-auto rounded-xl shadow-lg"></video>`;
+    } else if (type === 'audio') {
+        content.innerHTML = `<audio src="${url}" controls class="w-full"></audio>`;
+    }
+    
+    // Show modal
+    modal.classList.add('show');
+    modal.style.display = 'flex';
+}
 
-            if (targetUrl) {
-                row.addEventListener('click', (event) => {
-                    // Avoid triggering row click if an action inside the row was clicked
-                    if (event.target.closest('a, button')) {
-                        return;
-                    }
-                    window.location.href = targetUrl;
-                });
+function closeMediaModal() {
+    const modal = document.getElementById('mediaModal');
+    modal.classList.remove('show');
+    modal.style.display = 'none';
+}
+
+// Close modal when clicking outside
+document.addEventListener('DOMContentLoaded', function() {
+    const modal = document.getElementById('mediaModal');
+    if (modal) {
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                closeMediaModal();
             }
         });
-    });
+    }
+});
 </script>
 {% endblock %}

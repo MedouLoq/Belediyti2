@@ -1,0 +1,140 @@
+{% extends 'muni_admin/base.html' %}
+{% load static %}
+{% load i18n %}
+
+{% block title %}Assistant IA - Belediyti{% endblock %}
+{% block page_title %}Assistant de Données IA{% endblock %}
+{% block page_subtitle %}Posez des questions en langage naturel sur les problèmes et réclamations.{% endblock %}
+
+{% block extra_styles %}
+<style>
+    #chat-container { max-height: 60vh; overflow-y: auto; }
+    .chat-message {
+        padding: 1rem;
+        border-radius: 0.75rem;
+        margin-bottom: 0.75rem;
+        max-width: 80%;
+    }
+    .user-message {
+        background-color: #3b82f6; /* bg-blue-500 */
+        color: white;
+        margin-left: auto;
+        border-bottom-right-radius: 0;
+    }
+    .bot-message {
+        background-color: #e5e7eb; /* bg-gray-200 */
+        color: #1f2937; /* text-gray-800 */
+        margin-right: auto;
+        border-bottom-left-radius: 0;
+    }
+    .dark .bot-message {
+        background-color: #4b5563; /* dark:bg-gray-600 */
+        color: #f3f4f6; /* dark:text-gray-100 */
+    }
+    .loading-dots span {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background-color: #9ca3af; /* bg-gray-400 */
+        animation: loading 1.4s infinite ease-in-out both;
+    }
+    .loading-dots span:nth-child(1) { animation-delay: -0.32s; }
+    .loading-dots span:nth-child(2) { animation-delay: -0.16s; }
+    @keyframes loading {
+        0%, 80%, 100% { transform: scale(0); }
+        40% { transform: scale(1.0); }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="bg-white dark:bg-gray-800 shadow-lg rounded-xl p-6">
+    <div id="chat-container" class="space-y-4 p-4 border dark:border-gray-700 rounded-lg mb-4">
+        <!-- Chat messages will be appended here -->
+        <div class="chat-message bot-message">
+            Bonjour! Je suis votre assistant de données. Comment puis-je vous aider aujourd'hui? Posez-moi des questions comme "Quels sont les problèmes les plus anciens encore en attente ?"
+        </div>
+    </div>
+    <form id="chat-form" class="flex items-center space-x-4">
+        <input type="text" id="chat-input" placeholder="Posez votre question ici..."
+               class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+        <button type="submit" id="send-button"
+                class="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-blue-300">
+            <i class="fas fa-paper-plane"></i>
+        </button>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const chatForm = document.getElementById('chat-form');
+    const chatInput = document.getElementById('chat-input');
+    const sendButton = document.getElementById('send-button');
+    const chatContainer = document.getElementById('chat-container');
+
+    chatForm.addEventListener('submit', function(event) {
+        event.preventDefault();
+        const userInput = chatInput.value.trim();
+        if (!userInput) return;
+
+        addMessage(userInput, 'user');
+        chatInput.value = '';
+        setLoading(true);
+
+        fetch("{% url 'Muni_admin:chatbot_api' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                // CSRF token is not needed due to @csrf_exempt, but good practice for other views
+            },
+            body: JSON.stringify({ query: userInput })
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(err => { throw new Error(err.error || 'Erreur réseau') });
+            }
+            return response.json();
+        })
+        .then(data => {
+            addMessage(data.response, 'bot');
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            addMessage(`Désolé, une erreur est survenue: ${error.message}`, 'bot');
+        })
+        .finally(() => {
+            setLoading(false);
+        });
+    });
+
+    function addMessage(text, type) {
+        // Remove loading indicator if it exists
+        const loadingEl = document.getElementById('loading-indicator');
+        if (loadingEl) loadingEl.remove();
+        
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `chat-message ${type}-message`;
+        messageDiv.textContent = text;
+        chatContainer.appendChild(messageDiv);
+        chatContainer.scrollTop = chatContainer.scrollHeight; // Auto-scroll to bottom
+    }
+
+    function setLoading(isLoading) {
+        sendButton.disabled = isLoading;
+        chatInput.disabled = isLoading;
+
+        if (isLoading) {
+            const loadingDiv = document.createElement('div');
+            loadingDiv.id = 'loading-indicator';
+            loadingDiv.className = 'chat-message bot-message';
+            loadingDiv.innerHTML = `<div class="loading-dots"><span></span><span></span><span></span></div>`;
+            chatContainer.appendChild(loadingDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+    }
+});
+</script>
+{% endblock %}

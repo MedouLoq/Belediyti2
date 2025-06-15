@@ -1,762 +1,1168 @@
 {% extends 'muni_admin/base.html' %}
 {% load static %}
 {% load i18n %}
-{% block title %}{% trans "Tableau de bord" %}{% endblock %}
-{% block header_title %}{% trans "Tableau de bord" %}{% endblock %}
+
+{% block title %}Tableau de bord - Belediyti{% endblock %}
+{% block page_title %}Tableau de bord{% endblock %}
+{% block page_subtitle %}Vue d'ensemble de votre municipalité{% endblock %}
 
 {% block extra_styles %}
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
 <style>
-    .dashboard-card {
-        transition: all 0.3s ease;
+    /* Enhanced metric cards with solid backgrounds */
+    .metric-card {
+        @apply relative overflow-hidden bg-white dark:bg-secondary-800 
+               rounded-2xl shadow-elegant border border-secondary-200 dark:border-secondary-700 
+               transition-all duration-300 hover:shadow-elegant-lg hover:-translate-y-1;
     }
-    .dashboard-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    
+    .metric-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, var(--gradient-start), var(--gradient-end));
     }
-    .card-icon {
-        transition: all 0.3s ease;
+    
+    .metric-card.problems {
+        --gradient-start: #ef4444;
+        --gradient-end: #dc2626;
     }
-    .dashboard-card:hover .card-icon {
-        transform: scale(1.1);
+    
+    .metric-card.new-problems {
+        --gradient-start: #f59e0b;
+        --gradient-end: #d97706;
     }
-    .trend-up {
-        color: #10b981;
+    
+    .metric-card.complaints {
+        --gradient-start: #0ea5e9;
+        --gradient-end: #0284c7;
     }
-    .trend-down {
-        color: #ef4444;
+    
+    .metric-card.new-complaints {
+        --gradient-start: #10b981;
+        --gradient-end: #059669;
     }
-    .trend-neutral {
-        color: #f59e0b;
-    }
+    
+    /* Enhanced chart containers with solid backgrounds */
     .chart-container {
-        border-radius: 0.5rem;
-        overflow: hidden;
-        transition: all 0.3s ease;
+        @apply bg-white dark:bg-secondary-800 rounded-2xl 
+               shadow-elegant border border-secondary-200 dark:border-secondary-700
+               backdrop-blur-sm;
     }
-    .chart-container:hover {
-        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    
+    /* Enhanced quick actions bar */
+    .quick-actions-bar {
+        @apply bg-white dark:bg-secondary-800 backdrop-blur-sm rounded-2xl 
+               shadow-elegant border border-secondary-200 dark:border-secondary-700;
     }
-    .tab-content {
-        display: none;
+    
+    /* Status badges */
+    .status-badge {
+        @apply inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold 
+               border transition-all duration-200;
     }
-    .tab-content.active {
-        display: block;
-        animation: fadeIn 0.5s ease;
+    
+    .status-pending { 
+        @apply bg-warning-100 text-warning-800 border-warning-200 
+               dark:bg-warning-900/40 dark:text-warning-300 dark:border-warning-700; 
     }
-    @keyframes fadeIn {
-        from {opacity: 0;}
-        to {opacity: 1;}
+    .status-in-progress { 
+        @apply bg-primary-100 text-primary-800 border-primary-200 
+               dark:bg-primary-900/40 dark:text-primary-300 dark:border-primary-700; 
     }
-    .tab-button {
-        cursor: pointer;
-        padding: 0.5rem 1rem;
-        border-radius: 0.25rem;
-        font-weight: 500;
-        transition: all 0.3s ease;
+    .status-resolved { 
+        @apply bg-success-100 text-success-800 border-success-200 
+               dark:bg-success-900/40 dark:text-success-300 dark:border-success-700; 
     }
-    .tab-button.active {
-        background-color: #3b82f6;
-        color: white;
+    .status-rejected { 
+        @apply bg-danger-100 text-danger-800 border-danger-200 
+               dark:bg-danger-900/40 dark:text-danger-300 dark:border-danger-700; 
     }
+    .status-delegated { 
+        @apply bg-secondary-100 text-secondary-800 border-secondary-200 
+               dark:bg-secondary-700 dark:text-secondary-300 dark:border-secondary-600; 
+    }
+    .status-reviewing { 
+        @apply bg-accent-100 text-accent-800 border-accent-200 
+               dark:bg-accent-900/40 dark:text-accent-300 dark:border-accent-700; 
+    }
+    
+    /* Activity items */
+    .activity-item {
+        @apply transition-all duration-300 hover:bg-secondary-50 dark:hover:bg-secondary-700/50 
+               hover:translate-x-2 rounded-xl p-3 -m-3;
+    }
+    
+    /* Fixed map container with proper z-index */
     .map-container {
         height: 400px;
-        border-radius: 0.5rem;
+        border-radius: 1rem;
         overflow: hidden;
+        position: relative;
+        z-index: 1;
+        @apply shadow-elegant border border-secondary-200 dark:border-secondary-700 bg-white dark:bg-secondary-800;
     }
-    #toast-container {
-        position: fixed;
-        top: 1rem;
-        right: 1rem;
-        z-index: 1050;
-        width: 300px;
+    
+    /* Map legend styling */
+    .leaflet-control-container {
+        z-index: 10 !important;
     }
-    .toast {
-        background-color: rgba(0, 0, 0, 0.75);
+    
+    .leaflet-control {
+        background: white !important;
+        border: 1px solid #cbd5e1 !important;
+        border-radius: 0.5rem !important;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
+    }
+    
+    .dark .leaflet-control {
+        background: #1e293b !important;
+        border-color: #475569 !important;
+        color: white !important;
+    }
+    
+    .leaflet-control-zoom a {
+        color: #475569 !important;
+        border-radius: 0.375rem !important;
+    }
+    
+    .dark .leaflet-control-zoom a {
+        color: #e2e8f0 !important;
+        background: #334155 !important;
+    }
+    
+    .leaflet-control-zoom a:hover {
+        background: #f1f5f9 !important;
+    }
+    
+    .dark .leaflet-control-zoom a:hover {
+        background: #475569 !important;
+    }
+    
+    .map-error-message {
+        @apply flex items-center justify-center h-full text-secondary-600 dark:text-secondary-400 
+               bg-secondary-50 dark:bg-secondary-800 rounded-xl;
+    }
+    
+    /* Chart tabs */
+    .chart-tab {
+        @apply px-4 py-2.5 text-sm font-medium rounded-xl transition-all duration-300 
+               border border-transparent;
+    }
+    
+    .chart-tab.active {
+        @apply bg-gradient-to-r from-primary-600 to-primary-700 text-white shadow-elegant 
+               border-primary-500/20;
+    }
+    
+    .chart-tab:not(.active) {
+        @apply text-secondary-600 dark:text-secondary-400 hover:bg-secondary-100 
+               dark:hover:bg-secondary-700 hover:text-primary-600 dark:hover:text-primary-400
+               border-secondary-200 dark:border-secondary-700 bg-secondary-50 dark:bg-secondary-800;
+    }
+    
+    /* Loading states */
+    .loading-skeleton {
+        @apply animate-pulse bg-secondary-200 dark:bg-secondary-700 rounded;
+    }
+    
+    /* Enhanced buttons */
+    .action-button {
+        @apply flex items-center space-x-2 px-4 py-2.5 rounded-xl font-medium 
+               transition-all duration-300 border;
+    }
+    
+    .action-button.primary {
+        @apply bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 
+               text-white border-primary-500/20 shadow-elegant hover:shadow-elegant-lg 
+               transform hover:-translate-y-0.5;
+    }
+    
+    .action-button.secondary {
+        @apply bg-white dark:bg-secondary-800 text-secondary-700 dark:text-secondary-300 
+               border-secondary-200 dark:border-secondary-700 hover:bg-secondary-50 
+               dark:hover:bg-secondary-700 hover:shadow-elegant;
+    }
+    
+    /* Percentage change indicators */
+    .change-indicator {
+        @apply inline-flex items-center text-sm font-semibold rounded-lg px-2 py-1;
+    }
+    
+    .change-indicator.positive {
+        @apply text-success-700 dark:text-success-400 bg-success-100 dark:bg-success-900/40;
+    }
+    
+    .change-indicator.negative {
+        @apply text-danger-700 dark:text-danger-400 bg-danger-100 dark:bg-danger-900/40;
+    }
+    
+    .change-indicator.neutral {
+        @apply text-secondary-600 dark:text-secondary-400 bg-secondary-100 dark:bg-secondary-700;
+    }
+    
+    /* Enhanced visual hierarchy */
+    .dashboard-section {
+        @apply bg-white dark:bg-secondary-800 rounded-2xl shadow-elegant 
+               border border-secondary-200 dark:border-secondary-700 p-6;
+    }
+    
+    /* Custom map legend */
+    .map-legend {
+        position: absolute;
+        bottom: 10px;
+        right: 10px;
+        background: white;
+        padding: 10px;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        z-index: 1000;
+        font-size: 12px;
+        border: 1px solid #cbd5e1;
+    }
+    
+    .dark .map-legend {
+        background: #1e293b;
+        border-color: #475569;
         color: white;
-        padding: 0.75rem 1.25rem;
-        border-radius: 0.25rem;
-        margin-bottom: 0.5rem;
-        box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.1);
-        opacity: 0.9;
+    }
+    
+    .legend-item {
         display: flex;
         align-items: center;
+        margin-bottom: 5px;
+    }
+    
+    .legend-color {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        margin-right: 8px;
+        border: 2px solid white;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.3);
     }
 </style>
 {% endblock %}
 
 {% block content %}
-    <div class="mb-6">
-        <div class="flex flex-wrap items-center justify-between mb-4">
-            <h1 class="text-2xl font-bold text-secondary-900">{% trans "Vue d'ensemble" %}</h1>
-            <div class="flex space-x-2">
-                <select id="date-range-selector" class="rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
-                    <option value="7" {% if request.GET.days == '7' or not request.GET.days %}selected{% endif %}>{% trans "7 derniers jours" %}</option>
-                    <option value="30" {% if request.GET.days == '30' %}selected{% endif %}>{% trans "30 derniers jours" %}</option>
-                    <option value="90" {% if request.GET.days == '90' %}selected{% endif %}>{% trans "90 derniers jours" %}</option>
-                    <option value="365" {% if request.GET.days == '365' %}selected{% endif %}>{% trans "Année" %}</option>
-                </select>
-                <button id="refresh-dashboard" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-lg flex items-center">
-                    <i class="fas fa-sync-alt mr-1"></i> {% trans "Actualiser" %}
+<div class="space-y-8 animate-fade-in-up" x-data="dashboard()">
+    <!-- Enhanced Quick Actions Bar -->
+    <div class="quick-actions-bar">
+        <div class="flex flex-wrap items-center justify-between gap-6 p-6">
+            <div class="flex items-center space-x-4">
+                <div class="flex items-center space-x-2">
+                    <i class="fas fa-calendar-alt text-primary-600 dark:text-primary-400"></i>
+                    <select x-model="selectedPeriod" @change="updatePeriod()" class="form-input w-auto min-w-[180px]">
+                        <option value="7">7 derniers jours</option>
+                        <option value="30">30 derniers jours</option>
+                        <option value="90">90 derniers jours</option>
+                        <option value="365">Année complète</option>
+                    </select>
+                </div>
+                <button @click="refreshDashboard()" class="action-button secondary" :disabled="loading">
+                    <i class="fas fa-sync-alt" :class="{ 'animate-spin': loading }"></i>
+                    <span>Actualiser</span>
+                </button>
+            </div>
+            <div class="flex items-center space-x-3">
+                <button @click="generateReport()" class="action-button primary">
+                    <i class="fas fa-file-pdf"></i>
+                    <span>Générer Rapport</span>
+                </button>
+                <button @click="exportCharts()" class="action-button secondary">
+                    <i class="fas fa-download"></i>
+                    <span>Exporter</span>
                 </button>
             </div>
         </div>
     </div>
 
-    <!-- Summary Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-        <!-- Total Problems -->
-        <div class="bg-white shadow rounded-lg p-4 flex items-center justify-between dashboard-card">
-            <div>
-                <p class="text-sm font-medium text-secondary-500">{% trans "Total Problèmes Signalés" %}</p>
-                <div class="flex items-baseline">
-                    <p class="text-2xl font-semibold text-secondary-900">{{ total_problems }}</p>
+  <!-- Enhanced Key Metrics Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    <!-- Total Problems -->
+    <div class="metric-card problems bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 hover:shadow-xl transition-all duration-300">
+        <div class="p-6">
+            <div class="flex items-center justify-between mb-4">
+                <div class="w-14 h-14 bg-red-100 dark:bg-red-900/40 rounded-2xl flex items-center justify-center">
+                    <i class="fas fa-triangle-exclamation text-red-600 dark:text-red-400 text-xl"></i>
+                </div>
+                <div class="text-right">
                     {% with change=problem_percent_change|default:0 %}
-                        {% if change > 0 %}
-                            <span class="ml-2 text-sm trend-up flex items-center"><i class="fas fa-arrow-up mr-1"></i>{{ change }}%</span>
-                        {% elif change < 0 %}
-                            <span class="ml-2 text-sm trend-down flex items-center"><i class="fas fa-arrow-down mr-1"></i>{{ change|slice:"1:" }}%</span>
-                        {% else %}
-                            <span class="ml-2 text-sm trend-neutral flex items-center"><i class="fas fa-minus mr-1"></i>0%</span>
-                        {% endif %}
+                        <div class="change-indicator {% if change > 0 %}positive{% elif change < 0 %}negative{% else %}neutral{% endif %} px-2 py-1 rounded-lg text-xs font-semibold">
+                            {% if change > 0 %}
+                                <i class="fas fa-arrow-up mr-1"></i>+{{ change }}%
+                            {% elif change < 0 %}
+                                <i class="fas fa-arrow-down mr-1"></i>{{ change }}%
+                            {% else %}
+                                <i class="fas fa-minus mr-1"></i>0%
+                            {% endif %}
+                        </div>
                     {% endwith %}
                 </div>
-                <p class="text-xs text-secondary-500 mt-1">{% trans "vs période précédente" %}</p>
             </div>
-            <div class="text-danger-500 card-icon">
-                <i class="fas fa-triangle-exclamation fa-3x"></i>
+            <div>
+                <h3 class="text-3xl font-bold text-gray-900 dark:text-white mb-2 font-display">{{ total_problems|default:0 }}</h3>
+                <p class="text-gray-600 dark:text-gray-400 text-sm font-medium">Total Problèmes</p>
+                <p class="text-xs text-gray-500 dark:text-gray-500 mt-1">vs période précédente</p>
             </div>
         </div>
+    </div>
 
-        <!-- New Problems (Selected Period) -->
-        <div class="bg-white shadow rounded-lg p-4 flex items-center justify-between dashboard-card">
-            <div>
-                <p class="text-sm font-medium text-secondary-500">{% trans "Nouveaux Problèmes" %}</p>
-                <div class="flex items-baseline">
-                    <p class="text-2xl font-semibold text-secondary-900">{{ new_problems_last_period }}</p>
-                     {% with change=new_problem_percent_change|default:0 %}
-                        {% if change > 0 %}
-                            <span class="ml-2 text-sm trend-up flex items-center"><i class="fas fa-arrow-up mr-1"></i>{{ change }}%</span>
-                        {% elif change < 0 %}
-                            <span class="ml-2 text-sm trend-down flex items-center"><i class="fas fa-arrow-down mr-1"></i>{{ change|slice:"1:" }}%</span>
-                        {% else %}
-                            <span class="ml-2 text-sm trend-neutral flex items-center"><i class="fas fa-minus mr-1"></i>0%</span>
-                        {% endif %}
+    <!-- New Problems -->
+    <div class="metric-card new-problems bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 hover:shadow-xl transition-all duration-300">
+        <div class="p-6">
+            <div class="flex items-center justify-between mb-4">
+                <div class="w-14 h-14 bg-yellow-100 dark:bg-yellow-900/40 rounded-2xl flex items-center justify-center">
+                    <i class="fas fa-exclamation-triangle text-yellow-600 dark:text-yellow-400 text-xl"></i>
+                </div>
+                <div class="text-right">
+                    {% with change=new_problem_percent_change|default:0 %}
+                        <div class="change-indicator {% if change > 0 %}positive{% elif change < 0 %}negative{% else %}neutral{% endif %} px-2 py-1 rounded-lg text-xs font-semibold">
+                            {% if change > 0 %}
+                                <i class="fas fa-arrow-up mr-1"></i>+{{ change }}%
+                            {% elif change < 0 %}
+                                <i class="fas fa-arrow-down mr-1"></i>{{ change }}%
+                            {% else %}
+                                <i class="fas fa-minus mr-1"></i>0%
+                            {% endif %}
+                        </div>
                     {% endwith %}
                 </div>
-                <p class="text-xs text-secondary-500 mt-1" id="time-period-problems">
-                    {% with days=request.GET.days|default:"7" %}
-                        {% if days == '7' %}{% trans "7 derniers jours" %}
-                        {% elif days == '30' %}{% trans "30 derniers jours" %}
-                        {% elif days == '90' %}{% trans "90 derniers jours" %}
-                        {% elif days == '365' %}{% trans "Année" %}
-                        {% endif %}
-                    {% endwith %}
+            </div>
+            <div>
+                <h3 class="text-3xl font-bold text-gray-900 dark:text-white mb-2 font-display">{{ new_problems_last_7_days|default:0 }}</h3>
+                <p class="text-gray-600 dark:text-gray-400 text-sm font-medium">Nouveaux Problèmes</p>
+                <p class="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                    <span x-text="getPeriodText()"></span>
                 </p>
             </div>
-            <div class="text-warning-500 card-icon">
-                <i class="fas fa-exclamation-triangle fa-3x"></i>
-            </div>
         </div>
+    </div>
 
-        <!-- Total Complaints -->
-        <div class="bg-white shadow rounded-lg p-4 flex items-center justify-between dashboard-card">
-            <div>
-                <p class="text-sm font-medium text-secondary-500">{% trans "Total Réclamations" %}</p>
-                <div class="flex items-baseline">
-                    <p class="text-2xl font-semibold text-secondary-900">{{ total_complaints }}</p>
+    <!-- Total Complaints -->
+    <div class="metric-card complaints bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 hover:shadow-xl transition-all duration-300">
+        <div class="p-6">
+            <div class="flex items-center justify-between mb-4">
+                <div class="w-14 h-14 bg-blue-100 dark:bg-blue-900/40 rounded-2xl flex items-center justify-center">
+                    <i class="fas fa-file-signature text-blue-600 dark:text-blue-400 text-xl"></i>
+                </div>
+                <div class="text-right">
                     {% with change=complaint_percent_change|default:0 %}
-                        {% if change > 0 %}
-                            <span class="ml-2 text-sm trend-up flex items-center"><i class="fas fa-arrow-up mr-1"></i>{{ change }}%</span>
-                        {% elif change < 0 %}
-                            <span class="ml-2 text-sm trend-down flex items-center"><i class="fas fa-arrow-down mr-1"></i>{{ change|slice:"1:" }}%</span>
-                        {% else %}
-                            <span class="ml-2 text-sm trend-neutral flex items-center"><i class="fas fa-minus mr-1"></i>0%</span>
-                        {% endif %}
+                        <div class="change-indicator {% if change > 0 %}positive{% elif change < 0 %}negative{% else %}neutral{% endif %} px-2 py-1 rounded-lg text-xs font-semibold">
+                            {% if change > 0 %}
+                                <i class="fas fa-arrow-up mr-1"></i>+{{ change }}%
+                            {% elif change < 0 %}
+                                <i class="fas fa-arrow-down mr-1"></i>{{ change }}%
+                            {% else %}
+                                <i class="fas fa-minus mr-1"></i>0%
+                            {% endif %}
+                        </div>
                     {% endwith %}
                 </div>
-                <p class="text-xs text-secondary-500 mt-1">{% trans "vs période précédente" %}</p>
             </div>
-            <div class="text-primary-500 card-icon">
-                <i class="fas fa-file-signature fa-3x"></i>
+            <div>
+                <h3 class="text-3xl font-bold text-gray-900 dark:text-white mb-2 font-display">{{ total_complaints|default:0 }}</h3>
+                <p class="text-gray-600 dark:text-gray-400 text-sm font-medium">Total Réclamations</p>
+                <p class="text-xs text-gray-500 dark:text-gray-500 mt-1">vs période précédente</p>
             </div>
         </div>
+    </div>
 
-        <!-- New Complaints (Selected Period) -->
-        <div class="bg-white shadow rounded-lg p-4 flex items-center justify-between dashboard-card">
-            <div>
-                <p class="text-sm font-medium text-secondary-500">{% trans "Nouvelles Réclamations" %}</p>
-                <div class="flex items-baseline">
-                    <p class="text-2xl font-semibold text-secondary-900">{{ new_complaints_last_period }}</p>
+    <!-- New Complaints -->
+    <div class="metric-card new-complaints bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 hover:shadow-xl transition-all duration-300">
+        <div class="p-6">
+            <div class="flex items-center justify-between mb-4">
+                <div class="w-14 h-14 bg-green-100 dark:bg-green-900/40 rounded-2xl flex items-center justify-center">
+                    <i class="fas fa-file-alt text-green-600 dark:text-green-400 text-xl"></i>
+                </div>
+                <div class="text-right">
                     {% with change=new_complaint_percent_change|default:0 %}
-                        {% if change > 0 %}
-                            <span class="ml-2 text-sm trend-up flex items-center"><i class="fas fa-arrow-up mr-1"></i>{{ change }}%</span>
-                        {% elif change < 0 %}
-                            <span class="ml-2 text-sm trend-down flex items-center"><i class="fas fa-arrow-down mr-1"></i>{{ change|slice:"1:" }}%</span>
-                        {% else %}
-                            <span class="ml-2 text-sm trend-neutral flex items-center"><i class="fas fa-minus mr-1"></i>0%</span>
-                        {% endif %}
+                        <div class="change-indicator {% if change > 0 %}positive{% elif change < 0 %}negative{% else %}neutral{% endif %} px-2 py-1 rounded-lg text-xs font-semibold">
+                            {% if change > 0 %}
+                                <i class="fas fa-arrow-up mr-1"></i>+{{ change }}%
+                            {% elif change < 0 %}
+                                <i class="fas fa-arrow-down mr-1"></i>{{ change }}%
+                            {% else %}
+                                <i class="fas fa-minus mr-1"></i>0%
+                            {% endif %}
+                        </div>
                     {% endwith %}
                 </div>
-                 <p class="text-xs text-secondary-500 mt-1" id="time-period-complaints">
-                    {% with days=request.GET.days|default:"7" %}
-                        {% if days == '7' %}{% trans "7 derniers jours" %}
-                        {% elif days == '30' %}{% trans "30 derniers jours" %}
-                        {% elif days == '90' %}{% trans "90 derniers jours" %}
-                        {% elif days == '365' %}{% trans "Année" %}
-                        {% endif %}
-                    {% endwith %}
+            </div>
+            <div>
+                <h3 class="text-3xl font-bold text-gray-900 dark:text-white mb-2 font-display">{{ new_complaints_last_7_days|default:0 }}</h3>
+                <p class="text-gray-600 dark:text-gray-400 text-sm font-medium">Nouvelles Réclamations</p>
+                <p class="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                    <span x-text="getPeriodText()"></span>
                 </p>
             </div>
-            <div class="text-info-500 card-icon">
-                <i class="fas fa-file-alt fa-3x"></i>
-            </div>
         </div>
     </div>
+</div>
 
-    <!-- Time Series Charts -->
-    <div class="bg-white shadow rounded-lg p-6 mb-6 chart-container">
-        <div class="flex flex-wrap items-center justify-between mb-4">
-            <h2 class="text-lg font-semibold text-secondary-800">{% trans "Tendances sur 90 jours" %}</h2>
-            <div class="flex space-x-2" id="time-series-tabs">
-                <button class="tab-button active" data-target="problems-chart">{% trans "Problèmes" %}</button>
-                <button class="tab-button" data-target="complaints-chart">{% trans "Réclamations" %}</button>
-                <button class="tab-button" data-target="combined-chart">{% trans "Combiné" %}</button>
-            </div>
-        </div>
-        <div class="tab-content active" id="problems-chart">
-            <div id="problems-time-series" style="height: 350px;"></div>
-        </div>
-        <div class="tab-content" id="complaints-chart">
-            <div id="complaints-time-series" style="height: 350px;"></div>
-        </div>
-        <div class="tab-content" id="combined-chart">
-            <div id="combined-time-series" style="height: 350px;"></div>
-        </div>
-    </div>
-
-    <!-- Status and Categories -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        <!-- Status Breakdowns -->
-        <div class="bg-white shadow rounded-lg p-6 chart-container">
-            <div class="flex flex-wrap items-center justify-between mb-4">
-                <h2 class="text-lg font-semibold text-secondary-800">{% trans "Statut des signalements" %}</h2>
-                <div class="flex space-x-2" id="status-tabs">
-                    <button class="tab-button active" data-target="problem-status">{% trans "Problèmes" %}</button>
-                    <button class="tab-button" data-target="complaint-status">{% trans "Réclamations" %}</button>
+    <!-- Enhanced Charts Section -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <!-- Time Series Chart -->
+        <div class="lg:col-span-2 chart-container p-6">
+            <div class="flex flex-wrap items-center justify-between mb-6">
+                <div>
+                    <h2 class="text-xl font-bold text-secondary-900 dark:text-white font-display mb-1">Tendances Temporelles</h2>
+                    <p class="text-sm text-secondary-600 dark:text-secondary-400">Évolution des signalements dans le temps</p>
+                </div>
+                <div class="flex space-x-2" x-data="{ activeTab: 'combined' }">
+                    <button @click="activeTab = 'problems'; updateTimeSeriesChart('problems')" 
+                            :class="activeTab === 'problems' ? 'chart-tab active' : 'chart-tab'">
+                        <i class="fas fa-triangle-exclamation mr-2"></i>
+                        Problèmes
+                    </button>
+                    <button @click="activeTab = 'complaints'; updateTimeSeriesChart('complaints')" 
+                            :class="activeTab === 'complaints' ? 'chart-tab active' : 'chart-tab'">
+                        <i class="fas fa-file-signature mr-2"></i>
+                        Réclamations
+                    </button>
+                    <button @click="activeTab = 'combined'; updateTimeSeriesChart('combined')" 
+                            :class="activeTab === 'combined' ? 'chart-tab active' : 'chart-tab'">
+                        <i class="fas fa-chart-line mr-2"></i>
+                        Combiné
+                    </button>
                 </div>
             </div>
-            <div class="tab-content active" id="problem-status">
-                <div id="problem-status-chart" style="height: 300px;"></div>
+            <div id="time-series-chart" style="height: 400px;" class="rounded-xl bg-secondary-50 dark:bg-secondary-900/50"></div>
+        </div>
+
+        <!-- Status Distribution -->
+        <div class="chart-container p-6">
+            <div class="flex items-center justify-between mb-6">
+                <div>
+                    <h2 class="text-xl font-bold text-secondary-900 dark:text-white font-display mb-1">Distribution des Statuts</h2>
+                    <p class="text-sm text-secondary-600 dark:text-secondary-400">Répartition par statut</p>
+                </div>
+                <div class="flex space-x-2" x-data="{ activeTab: 'problems' }">
+                    <button @click="activeTab = 'problems'; updateStatusChart('problems')" 
+                            :class="activeTab === 'problems' ? 'chart-tab active' : 'chart-tab'">
+                        Problèmes
+                    </button>
+                    <button @click="activeTab = 'complaints'; updateStatusChart('complaints')" 
+                            :class="activeTab === 'complaints' ? 'chart-tab active' : 'chart-tab'">
+                        Réclamations
+                    </button>
+                </div>
             </div>
-            <div class="tab-content" id="complaint-status">
-                <div id="complaint-status-chart" style="height: 300px;"></div>
-            </div>
+            <div id="status-chart" style="height: 300px;" class="rounded-xl bg-secondary-50 dark:bg-secondary-900/50"></div>
         </div>
 
         <!-- Top Categories -->
-        <div class="bg-white shadow rounded-lg p-6 chart-container">
-            <h2 class="text-lg font-semibold text-secondary-800 mb-4">{% trans "Top 5 Catégories de Problèmes" %}</h2>
-            <div id="problem-categories-chart" style="height: 300px;"></div>
+        <div class="chart-container p-6">
+            <div class="mb-6">
+                <h2 class="text-xl font-bold text-secondary-900 dark:text-white font-display mb-1">Top Catégories</h2>
+                <p class="text-sm text-secondary-600 dark:text-secondary-400">Catégories les plus signalées</p>
+            </div>
+            <div id="categories-chart" style="height: 300px;" class="rounded-xl bg-secondary-50 dark:bg-secondary-900/50"></div>
         </div>
     </div>
 
     <!-- Map and Resolution Time -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        <!-- Map View -->
-        <div class="bg-white shadow rounded-lg p-6 chart-container">
-            <h2 class="text-lg font-semibold text-secondary-800 mb-4">{% trans "Distribution Géographique (Problèmes)" %}</h2>
-            <div id="problem-map" class="map-container"></div>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <!-- Geographic Distribution -->
+        <div class="chart-container p-6">
+            <div class="mb-6">
+                <h2 class="text-xl font-bold text-secondary-900 dark:text-white font-display mb-1">Distribution Géographique</h2>
+                <p class="text-sm text-secondary-600 dark:text-secondary-400">Localisation des signalements</p>
+            </div>
+            <div class="relative">
+                <div id="problem-map" class="map-container"></div>
+                <!-- Custom Map Legend -->
+                <div class="map-legend" id="map-legend" style="display: none;">
+                    <div class="font-semibold mb-2 text-sm">Légende</div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: #f59e0b;"></div>
+                        <span>En attente</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: #0ea5e9;"></div>
+                        <span>En cours</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: #10b981;"></div>
+                        <span>Résolu</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: #ef4444;"></div>
+                        <span>Rejeté</span>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Resolution Time -->
-        <div class="bg-white shadow rounded-lg p-6 chart-container">
-            <h2 class="text-lg font-semibold text-secondary-800 mb-4">{% trans "Temps de Résolution Moyen (Problèmes)" %}</h2>
-            <div id="resolution-time-chart" style="height: 300px;"></div>
+        <div class="chart-container p-6">
+            <div class="mb-6">
+                <h2 class="text-xl font-bold text-secondary-900 dark:text-white font-display mb-1">Temps de Résolution</h2>
+                <p class="text-sm text-secondary-600 dark:text-secondary-400">Délais moyens par catégorie</p>
+            </div>
+            <div id="resolution-time-chart" style="height: 300px;" class="rounded-xl bg-secondary-50 dark:bg-secondary-900/50"></div>
         </div>
     </div>
 
-    <!-- Recent Activities Table with Filtering -->
-    <div class="bg-white shadow rounded-lg p-6 mb-6">
-        <div class="flex flex-wrap items-center justify-between mb-4">
-            <h2 class="text-lg font-semibold text-secondary-800">{% trans "Activités Récentes" %}</h2>
-            <div class="flex space-x-2">
-                <select id="activity-filter" class="rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
-                    <option value="all">{% trans "Tous" %}</option>
-                    <option value="problem">{% trans "Problèmes" %}</option>
-                    <option value="complaint">{% trans "Réclamations" %}</option>
-                </select>
+    <!-- Enhanced Recent Activity -->
+    <div class="dashboard-section">
+        <div class="flex items-center justify-between mb-6">
+            <div>
+                <h2 class="text-xl font-bold text-secondary-900 dark:text-white font-display mb-1">Activité Récente</h2>
+                <p class="text-sm text-secondary-600 dark:text-secondary-400">Dernières actions et mises à jour</p>
             </div>
+            <button @click="refreshActivity()" class="action-button secondary">
+                <i class="fas fa-refresh"></i>
+                <span>Actualiser</span>
+            </button>
         </div>
-        <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gray-50">
-                    <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{% trans "Type" %}</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{% trans "Description" %}</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{% trans "Date" %}</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{% trans "Statut" %}</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{% trans "Actions" %}</th>
-                    </tr>
-                </thead>
-                <tbody class="bg-white divide-y divide-gray-200" id="activities-table-body">
-                    {% for activity in recent_activities %}
-                    <tr class="activity-row" data-type="{{ activity.type }}">
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            {% if activity.type == 'problem' %}
-                                <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
-                                    {% trans "Problème" %}
-                                </span>
-                            {% else %}
-                                <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-                                    {% trans "Réclamation" %}
-                                </span>
-                            {% endif %}
-                        </td>
-                        <td class="px-6 py-4">
-                            <div class="text-sm text-gray-900">{{ activity.text }}</div>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="text-sm text-gray-500">{{ activity.timestamp|date:"d/m/Y H:i" }}</div>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full 
-                                {% if activity.status == 'PENDING' %}bg-yellow-100 text-yellow-800
-                                {% elif activity.status == 'IN_PROGRESS' or activity.status == 'REVIEWING' %}bg-blue-100 text-blue-800
-                                {% elif activity.status == 'RESOLVED' %}bg-green-100 text-green-800
-                                {% elif activity.status == 'REJECTED' %}bg-red-100 text-red-800
-                                {% elif activity.status == 'DELEGATED' %}bg-purple-100 text-purple-800
-                                {% else %}bg-gray-100 text-gray-800
-                                {% endif %}">
-                                {{ activity.status_display }}
-                            </span>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm">
-                            <a href="{{ activity.detail_url }}" class="text-blue-600 hover:text-blue-900">{% trans "Voir" %}</a>
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="5" class="px-6 py-4 text-center text-secondary-600">{% trans "Aucune activité récente." %}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+        
+        <div class="space-y-1">
+            {% for activity in recent_activities %}
+            <div class="activity-item">
+                <div class="flex items-center space-x-4 py-4">
+                    <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center flex-shrink-0 shadow-elegant">
+                        <i class="fas fa-{% if activity.type == 'problem' %}triangle-exclamation{% else %}file-signature{% endif %} text-white"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-secondary-900 dark:text-white font-medium truncate">{{ activity.text }}</p>
+                        <div class="flex items-center space-x-3 mt-1">
+                            <p class="text-sm text-secondary-600 dark:text-secondary-400">
+                                <i class="fas fa-clock mr-1"></i>
+                                {{ activity.timestamp|date:"d/m/Y H:i" }}
+                            </p>
+                            <span class="status-badge status-{{ activity.status|lower }}">{{ activity.status_display }}</span>
+                        </div>
+                    </div>
+                    <a href="{{ activity.detail_url }}" class="action-button secondary">
+                        <i class="fas fa-eye"></i>
+                        <span class="hidden sm:inline">Voir</span>
+                    </a>
+                </div>
+            </div>
+            {% empty %}
+            <div class="text-center py-12">
+                <div class="w-16 h-16 bg-secondary-100 dark:bg-secondary-700 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-inbox text-secondary-400 text-2xl"></i>
+                </div>
+                <p class="text-secondary-600 dark:text-secondary-400 font-medium">Aucune activité récente</p>
+                <p class="text-sm text-secondary-500 dark:text-secondary-500 mt-1">Les nouvelles activités apparaîtront ici</p>
+            </div>
+            {% endfor %}
         </div>
     </div>
-    <div id="toast-container"></div>
+</div>
 {% endblock %}
 
 {% block extra_scripts %}
-    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // --- Data Parsing --- 
-            const problemsTimeSeriesData = JSON.parse('{{ problems_time_series|safe }}');
-            const complaintsTimeSeriesData = JSON.parse('{{ complaints_time_series|safe }}');
-            const problemStatusData = JSON.parse('{{ problem_status_data|safe }}');
-            const complaintStatusData = JSON.parse('{{ complaint_status_data|safe }}');
-            const problemCategoriesData = JSON.parse('{{ problem_categories_data|safe }}');
-            const resolutionTimeData = JSON.parse('{{ resolution_time_data|safe }}');
-            const problemMapData = JSON.parse('{{ problem_map_data|safe }}');
-            const municipalityLat = parseFloat('{{ municipality.latitude|default:0 }}');
-            const municipalityLon = parseFloat('{{ municipality.longitude|default:0 }}');
-            const statusChoices = {
-                'PENDING': '{% trans "En attente" %}',
-                'IN_PROGRESS': '{% trans "En cours" %}',
-                'DELEGATED': '{% trans "Délégué" %}',
-                'RESOLVED': '{% trans "Résolu" %}',
-                'REJECTED': '{% trans "Rejeté" %}',
-                'REVIEWING': '{% trans "En examen" %}'
-            };
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script>
+function dashboard() {
+    return {
+        loading: false,
+        selectedPeriod: '7',
+        timeSeriesChart: null,
+        statusChart: null,
+        categoriesChart: null,
+        resolutionTimeChart: null,
+        map: null,
+        
+        init() {
+            this.initCharts();
+            this.loadInitialData();
+        },
 
-            // --- Chart Options --- 
-            const commonChartOptions = {
+        getPeriodText() {
+            const periods = {
+                '7': '7 derniers jours',
+                '30': '30 derniers jours', 
+                '90': '90 derniers jours',
+                '365': 'Année complète'
+            };
+            return periods[this.selectedPeriod] || '7 derniers jours';
+        },
+
+        async loadInitialData() {
+            // Load initial chart data from Django context
+            try {
+                const problemsTimeSeriesData = {{ problems_time_series|safe }};
+                const complaintsTimeSeriesData = {{ complaints_time_series|safe }};
+                const problemStatusData = {{ problem_status_data|safe }};
+                const complaintStatusData = {{ complaint_status_data|safe }};
+                const categoriesData = {{ problem_categories_data|safe }};
+                const resolutionTimeData = {{ resolution_time_data|safe }};
+                const mapData = {{ problem_map_data|safe }};
+
+                this.updateTimeSeriesChartData({
+                    dates: problemsTimeSeriesData.dates,
+                    problems: problemsTimeSeriesData.series[0].data,
+                    complaints: complaintsTimeSeriesData.series[0].data
+                });
+
+                this.updateStatusChartData({
+                    labels: problemStatusData.map(item => this.getStatusLabel(item.status)),
+                    series: problemStatusData.map(item => item.count)
+                });
+
+                this.updateCategoriesChartData({
+                    labels: categoriesData.map(item => item.category__name || 'Sans catégorie'),
+                    series: categoriesData.map(item => item.count)
+                });
+
+                this.updateResolutionTimeChartData(resolutionTimeData);
+                this.updateMap(mapData);
+
+            } catch (error) {
+                console.error('Error loading initial data:', error);
+                this.showToast('Erreur lors du chargement des données', 'error');
+            }
+        },
+
+        getStatusLabel(status) {
+            const statusLabels = {
+                'PENDING': 'En attente',
+                'IN_PROGRESS': 'En cours',
+                'RESOLVED': 'Résolu',
+                'REJECTED': 'Rejeté',
+                'DELEGATED': 'Délégué',
+                'REVIEWING': 'En révision'
+            };
+            return statusLabels[status] || status;
+        },
+
+        async updatePeriod() {
+            await this.fetchDashboardData();
+        },
+
+        async refreshDashboard() {
+            await this.fetchDashboardData();
+            this.showToast('Tableau de bord actualisé!', 'success');
+        },
+
+        async refreshActivity() {
+            // Refresh only the activity section
+            this.showToast('Activité actualisée!', 'info');
+        },
+
+        async fetchDashboardData() {
+            this.loading = true;
+            try {
+                const response = await fetch(`/muni_admin/dashboard/?days=${this.selectedPeriod}`, {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                
+                // For now, just reload the page with new parameters
+                window.location.href = `/muni_admin/dashboard/?days=${this.selectedPeriod}`;
+                
+            } catch (error) {
+                console.error('Error fetching dashboard data:', error);
+                this.showToast('Erreur lors du chargement des données', 'error');
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        initCharts() {
+            this.initTimeSeriesChart();
+            this.initStatusChart();
+            this.initCategoriesChart();
+            this.initResolutionTimeChart();
+        },
+
+        initTimeSeriesChart() {
+            const options = {
+                series: [],
                 chart: {
-                    fontFamily: 'inherit',
+                    height: 400,
+                    type: 'area',
                     toolbar: { show: false },
-                    zoom: { enabled: false }
+                    zoom: { enabled: false },
+                    fontFamily: 'Inter, sans-serif',
+                    foreColor: this.getChartTextColor(),
+                    background: 'transparent',
+                    animations: {
+                        enabled: true,
+                        easing: 'easeinout',
+                        speed: 800
+                    }
                 },
-                colors: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#6366f1', '#a855f7'],
                 dataLabels: { enabled: false },
-                stroke: { curve: 'smooth', width: 2 },
-                grid: {
-                    borderColor: '#e5e7eb',
-                    strokeDashArray: 4,
-                    yaxis: { lines: { show: true } }
+                stroke: { 
+                    curve: 'smooth', 
+                    width: 3,
+                    lineCap: 'round'
+                },
+                fill: {
+                    type: 'gradient',
+                    gradient: {
+                        shadeIntensity: 1,
+                        opacityFrom: 0.7,
+                        opacityTo: 0.1,
+                        stops: [0, 90, 100]
+                    }
                 },
                 xaxis: {
-                    labels: { style: { colors: '#6b7280' } },
+                    type: 'datetime',
+                    categories: [],
+                    labels: { 
+                        datetimeUTC: false,
+                        style: { fontSize: '12px', colors: this.getChartTextColor() }
+                    },
                     axisBorder: { show: false },
                     axisTicks: { show: false }
                 },
                 yaxis: {
-                    labels: { style: { colors: '#6b7280' } }
+                    labels: { 
+                        formatter: (value) => Math.round(value),
+                        style: { fontSize: '12px', colors: this.getChartTextColor() }
+                    }
                 },
-                tooltip: {
-                    theme: 'light',
-                    x: { format: 'dd MMM yyyy' }
+                tooltip: { 
+                    x: { format: 'dd MMM yyyy' },
+                    theme: document.documentElement.classList.contains('dark') ? 'dark' : 'light'
                 },
-                legend: { show: true, position: 'top', horizontalAlign: 'right', offsetY: -10 }
-            };
-
-            // --- Time Series Charts --- 
-            const timeSeriesOptions = (seriesData, categories) => ({
-                ...commonChartOptions,
-                series: seriesData,
-                chart: { ...commonChartOptions.chart, type: 'area', height: 350 },
-                xaxis: {
-                    ...commonChartOptions.xaxis,
-                    type: 'datetime',
-                    categories: categories,
+                grid: { 
+                    borderColor: this.getChartBorderColor(),
+                    strokeDashArray: 3,
+                    xaxis: { lines: { show: false } }
                 },
-                tooltip: {
-                    ...commonChartOptions.tooltip,
-                    x: { format: 'dd MMM yyyy' }
+                colors: ['#ef4444', '#0ea5e9'],
+                legend: { 
+                    position: 'top',
+                    horizontalAlign: 'right',
+                    fontSize: '14px',
+                    fontWeight: 500,
+                    labels: { colors: this.getChartTextColor() }
                 }
-            });
-
-            if (document.getElementById('problems-time-series')) {
-                const problemsChart = new ApexCharts(document.getElementById('problems-time-series'), 
-                    timeSeriesOptions(problemsTimeSeriesData.series, problemsTimeSeriesData.dates)
-                );
-                problemsChart.render();
-            }
-
-            if (document.getElementById('complaints-time-series')) {
-                const complaintsChart = new ApexCharts(document.getElementById('complaints-time-series'), 
-                    timeSeriesOptions(complaintsTimeSeriesData.series, complaintsTimeSeriesData.dates)
-                );
-                complaintsChart.render();
-            }
-
-            if (document.getElementById('combined-time-series')) {
-                const combinedSeries = [
-                    problemsTimeSeriesData.series[0],
-                    complaintsTimeSeriesData.series[0]
-                ];
-                const combinedChart = new ApexCharts(document.getElementById('combined-time-series'), 
-                    timeSeriesOptions(combinedSeries, problemsTimeSeriesData.dates)
-                );
-                combinedChart.render();
-            }
-
-            // --- Status Charts (Donut) --- 
-            const statusChartOptions = (data, title) => {
-                const labels = data.map(item => statusChoices[item.status] || item.status);
-                const series = data.map(item => item.count);
-                return {
-                    series: series,
-                    chart: {
-                        type: 'donut',
-                        height: 300,
-                        fontFamily: 'inherit'
-                    },
-                    labels: labels,
-                    colors: ['#f59e0b', '#3b82f6', '#a855f7', '#10b981', '#ef4444', '#6b7280'], // PENDING, IN_PROGRESS/REVIEWING, DELEGATED, RESOLVED, REJECTED
-                    legend: { position: 'bottom' },
-                    dataLabels: { enabled: true, formatter: function (val) { return Math.round(val) + "%" } },
-                    tooltip: {
-                        y: { formatter: function (val) { return val + " " + title } }
-                    }
-                };
             };
+            
+            this.timeSeriesChart = new ApexCharts(document.querySelector("#time-series-chart"), options);
+            this.timeSeriesChart.render();
+        },
 
-            if (document.getElementById('problem-status-chart')) {
-                const problemStatusChart = new ApexCharts(document.getElementById('problem-status-chart'), 
-                    statusChartOptions(problemStatusData, '{% trans "Problèmes" %}')
-                );
-                problemStatusChart.render();
-            }
-
-            if (document.getElementById('complaint-status-chart')) {
-                const complaintStatusChart = new ApexCharts(document.getElementById('complaint-status-chart'), 
-                    statusChartOptions(complaintStatusData, '{% trans "Réclamations" %}')
-                );
-                complaintStatusChart.render();
-            }
-
-            // --- Problem Categories Chart (Bar) ---
-            if (document.getElementById('problem-categories-chart')) {
-                const categoriesLabels = problemCategoriesData.map(item => item.category__name || '{% trans "Sans catégorie" %}');
-                const categoriesSeries = problemCategoriesData.map(item => item.count);
-                const categoriesChart = new ApexCharts(document.getElementById('problem-categories-chart'), {
-                    series: [{ name: '{% trans "Nombre de problèmes" %}', data: categoriesSeries }],
-                    chart: {
-                        type: 'bar',
-                        height: 300,
-                        fontFamily: 'inherit',
-                        toolbar: { show: false }
-                    },
-                    plotOptions: {
-                        bar: {
-                            horizontal: true,
-                            borderRadius: 4,
-                            dataLabels: { position: 'top' }
-                        }
-                    },
-                    colors: ['#3b82f6'],
-                    dataLabels: {
+        initStatusChart() {
+            const options = {
+                series: [],
+                chart: {
+                    height: 300,
+                    type: 'donut',
+                    fontFamily: 'Inter, sans-serif',
+                    foreColor: this.getChartTextColor(),
+                    background: 'transparent',
+                    animations: {
                         enabled: true,
-                        offsetX: -6,
-                        style: { fontSize: '12px', colors: ['#fff'] }
-                    },
-                    xaxis: {
-                        categories: categoriesLabels,
-                        labels: { style: { colors: '#6b7280' } }
-                    },
-                    yaxis: {
-                        labels: { style: { colors: '#6b7280' } }
-                    },
-                    grid: { borderColor: '#e5e7eb' },
-                    tooltip: {
-                        y: { formatter: function (val) { return val + " {% trans "problèmes" %}" } }
+                        easing: 'easeinout',
+                        speed: 800
                     }
-                });
-                categoriesChart.render();
-            }
-
-            // --- Resolution Time Chart (Bar) ---
-            if (document.getElementById('resolution-time-chart')) {
-                const resolutionLabels = resolutionTimeData.map(item => item.category);
-                const resolutionSeries = resolutionTimeData.map(item => parseFloat(item.avg_days).toFixed(1));
-                const resolutionChart = new ApexCharts(document.getElementById('resolution-time-chart'), {
-                    series: [{ name: '{% trans "Jours moyens" %}', data: resolutionSeries }],
-                    chart: {
-                        type: 'bar',
-                        height: 300,
-                        fontFamily: 'inherit',
-                        toolbar: { show: false }
-                    },
-                    plotOptions: {
-                        bar: {
-                            horizontal: false,
-                            borderRadius: 4,
-                            columnWidth: '50%',
-                        }
-                    },
-                    colors: ['#10b981'],
-                    dataLabels: { enabled: false },
-                    xaxis: {
-                        categories: resolutionLabels,
-                        labels: { style: { colors: '#6b7280' }, rotate: -45, trim: true, maxHeight: 100 }
-                    },
-                    yaxis: {
-                        title: { text: '{% trans "Jours" %}' },
-                        labels: { style: { colors: '#6b7280' } }
-                    },
-                    grid: { borderColor: '#e5e7eb' },
-                    tooltip: {
-                        y: { formatter: function (val) { return val + " {% trans "jours" %}" } }
-                    }
-                });
-                resolutionChart.render();
-            }
-
-            // --- Problem Map (Leaflet) ---
-          // --- Problem Map (Leaflet) ---
-if (document.getElementById('problem-map')) {
-    // Initialize the map first, we'll set view later
-    const map = L.map('problem-map');
-
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-    }).addTo(map);
-
-    const statusColors = {
-        'PENDING': 'orange',
-        'IN_PROGRESS': 'blue',
-        'DELEGATED': 'purple',
-        'RESOLVED': 'green',
-        'REJECTED': 'red'
-    };
-    
-    // Create a bounds object to track the extent of all markers
-    const bounds = L.latLngBounds();
-    let hasValidCoordinates = false;
-
-    // Add markers for each problem and extend bounds
-    problemMapData.forEach(problem => {
-        if (problem.latitude && problem.longitude) {
-            hasValidCoordinates = true;
-            const markerColor = statusColors[problem.status] || 'grey';
-            const marker = L.circleMarker([problem.latitude, problem.longitude], {
-                radius: 8,
-                fillColor: markerColor,
-                color: '#000',
-                weight: 1,
-                opacity: 1,
-                fillOpacity: 0.8
-            }).addTo(map);
-
-            const popupContent = `
-                <b>{% trans "Catégorie" %}:</b> ${problem.category__name || '{% trans "N/A" %}'}<br>
-                <b>{% trans "Description" %}:</b> ${problem.description.substring(0, 100)}...<br>
-                <b>{% trans "Statut" %}:</b> ${statusChoices[problem.status] || problem.status}<br>
-                <b>{% trans "Signalé le" %}:</b> ${new Date(problem.created_at).toLocaleDateString()}
-                <br><a href="/muni_admin/problems/${problem.pk}/detail/" target="_blank">{% trans "Voir détails" %}</a>
-            `;
-            marker.bindPopup(popupContent);
-            
-            // Extend bounds to include this marker
-            bounds.extend([problem.latitude, problem.longitude]);
-        }
-    });
-
-    // Set map view based on markers or fallback to municipality
-    if (hasValidCoordinates) {
-        // If we have any valid coordinates, fit the map to those bounds
-        map.fitBounds(bounds, {
-            padding: [30, 30], // Add some padding around the bounds
-            maxZoom: 15        // Don't zoom in too far if only one point
-        });
-    } else if (municipalityLat && municipalityLon) {
-        // If no problem coordinates but we have municipality coords, use those
-        map.setView([municipalityLat, municipalityLon], 12);
-    } else {
-        // Last resort fallback
-        map.setView([20.26, -10.25], 7);
-    }
-    
-    // Add a legend
-    const legend = L.control({position: 'bottomright'});
-    legend.onAdd = function (map) {
-        const div = L.DomUtil.create('div', 'info legend');
-        div.style.backgroundColor = 'white';
-        div.style.padding = '6px 8px';
-        div.style.border = '1px solid #ccc';
-        div.style.borderRadius = '5px';
-        div.style.lineHeight = '18px';
-        div.style.fontFamily = 'inherit';
-        div.style.fontSize = '12px';
-        
-        div.innerHTML = '<h4 style="margin: 0 0 5px 0;">{% trans "Statut" %}</h4>';
-        
-        Object.entries(statusColors).forEach(([status, color]) => {
-            div.innerHTML += `
-                <div style="margin-bottom: 3px;">
-                    <i style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background-color: ${color}; margin-right: 5px;"></i>
-                    ${statusChoices[status] || status}
-                </div>
-            `;
-        });
-        
-        return div;
-    };
-    legend.addTo(map);
-}
-            // --- Tab Switching Logic --- 
-            function setupTabs(tabContainerId) {
-                const tabContainer = document.getElementById(tabContainerId);
-                if (!tabContainer) return;
-                
-                const tabButtons = tabContainer.querySelectorAll('.tab-button');
-                const tabContents = tabContainer.parentElement.querySelectorAll('.tab-content');
-
-                tabButtons.forEach(button => {
-                    button.addEventListener('click', () => {
-                        const targetId = button.dataset.target;
-                        
-                        // Update button styles
-                        tabButtons.forEach(btn => btn.classList.remove('active'));
-                        button.classList.add('active');
-                        
-                        // Update content visibility
-                        tabContents.forEach(content => {
-                            if (content.id === targetId) {
-                                content.classList.add('active');
-                            } else {
-                                content.classList.remove('active');
+                },
+                labels: [],
+                plotOptions: {
+                    pie: {
+                        donut: {
+                            size: '70%',
+                            labels: {
+                                show: true,
+                                total: {
+                                    show: true,
+                                    fontSize: '16px',
+                                    fontWeight: 600,
+                                    color: this.getChartTextColor()
+                                }
                             }
-                        });
-                    });
-                });
-            }
-            setupTabs('time-series-tabs');
-            setupTabs('status-tabs');
-
-            // --- Activity Table Filtering --- 
-            const activityFilter = document.getElementById('activity-filter');
-            const activityTableBody = document.getElementById('activities-table-body');
-            const activityRows = activityTableBody.querySelectorAll('.activity-row');
-
-            if (activityFilter) {
-                activityFilter.addEventListener('change', function() {
-                    const filterValue = this.value;
-                    activityRows.forEach(row => {
-                        if (filterValue === 'all' || row.dataset.type === filterValue) {
-                            row.style.display = '';
-                        } else {
-                            row.style.display = 'none';
                         }
-                    });
-                });
-            }
-
-            // --- Date Range Selector & Refresh --- 
-            const dateRangeSelector = document.getElementById('date-range-selector');
-            const refreshButton = document.getElementById('refresh-dashboard');
-
-            function reloadWithParams() {
-                const selectedDays = dateRangeSelector.value;
-                window.location.href = `?days=${selectedDays}`;
-            }
-
-            if (dateRangeSelector) {
-                dateRangeSelector.addEventListener('change', reloadWithParams);
-            }
-            if (refreshButton) {
-                refreshButton.addEventListener('click', reloadWithParams);
-            }
-
-            // --- Toast Notifications (Example) --- 
-            const toastContainer = document.getElementById('toast-container');
-            function showToast(message, type = 'info') {
-                if (!toastContainer) return;
-                const toast = document.createElement('div');
-                toast.className = `toast animate__animated animate__fadeInRight bg-${type}-500`; // Example: use Tailwind colors
-                toast.innerHTML = `
-                    <span>${message}</span>
-                    <button class="ml-auto text-white focus:outline-none">
-                        <i class="fas fa-times"></i>
-                    </button>
-                `;
-                toastContainer.appendChild(toast);
-                
-                toast.querySelector('button').addEventListener('click', () => {
-                    toast.classList.replace('animate__fadeInRight', 'animate__fadeOutRight');
-                    setTimeout(() => toastContainer.removeChild(toast), 500);
-                });
-                
-                setTimeout(() => {
-                    if (toastContainer.contains(toast)) {
-                        toast.classList.replace('animate__fadeInRight', 'animate__fadeOutRight');
-                        setTimeout(() => { if (toastContainer.contains(toast)) toastContainer.removeChild(toast); }, 500);
                     }
-                }, 5000);
-            }
-            // Example usage: showToast('Dashboard loaded successfully!', 'success');
-
-            // --- Initial Animations --- 
-            const cards = document.querySelectorAll('.dashboard-card');
-            cards.forEach((card, index) => {
-                card.style.opacity = '0'; // Start hidden for animation
-                setTimeout(() => {
-                    card.classList.add('animate__animated', 'animate__fadeInUp');
-                    card.style.opacity = '1';
-                }, index * 100);
-            });
+                },
+                responsive: [{
+                    breakpoint: 480,
+                    options: { 
+                        chart: { width: 200 }, 
+                        legend: { position: 'bottom' } 
+                    }
+                }],
+                legend: { 
+                    position: 'right',
+                    fontSize: '14px',
+                    fontWeight: 500,
+                    labels: { colors: this.getChartTextColor() }
+                },
+                colors: ['#f59e0b', '#0ea5e9', '#10b981', '#ef4444', '#6b7280', '#8b5cf6'],
+                tooltip: {
+                    theme: document.documentElement.classList.contains('dark') ? 'dark' : 'light'
+                }
+            };
             
-            const chartContainers = document.querySelectorAll('.chart-container');
-            chartContainers.forEach((container, index) => {
-                container.style.opacity = '0'; // Start hidden for animation
-                setTimeout(() => {
-                    container.classList.add('animate__animated', 'animate__fadeIn');
-                    container.style.opacity = '1';
-                }, 500 + index * 150);
-            });
+            this.statusChart = new ApexCharts(document.querySelector("#status-chart"), options);
+            this.statusChart.render();
+        },
+
+        initCategoriesChart() {
+            const options = {
+                series: [],
+                chart: {
+                    height: 300,
+                    type: 'bar',
+                    toolbar: { show: false },
+                    fontFamily: 'Inter, sans-serif',
+                    foreColor: this.getChartTextColor(),
+                    background: 'transparent',
+                    animations: {
+                        enabled: true,
+                        easing: 'easeinout',
+                        speed: 800
+                    }
+                },
+                plotOptions: { 
+                    bar: { 
+                        horizontal: true,
+                        borderRadius: 8,
+                        dataLabels: { position: 'top' }
+                    } 
+                },
+                dataLabels: { 
+                    enabled: true,
+                    style: { fontSize: '12px', fontWeight: 600, colors: ['#fff'] }
+                },
+                xaxis: {
+                    categories: [],
+                    labels: { 
+                        formatter: (value) => Math.round(value),
+                        style: { fontSize: '12px', colors: this.getChartTextColor() }
+                    },
+                    axisBorder: { show: false },
+                    axisTicks: { show: false }
+                },
+                yaxis: {
+                    labels: { style: { fontSize: '12px', colors: this.getChartTextColor() } }
+                },
+                grid: { 
+                    borderColor: this.getChartBorderColor(),
+                    strokeDashArray: 3,
+                    yaxis: { lines: { show: false } }
+                },
+                colors: ['#0ea5e9'],
+                tooltip: {
+                    theme: document.documentElement.classList.contains('dark') ? 'dark' : 'light'
+                }
+            };
+            
+            this.categoriesChart = new ApexCharts(document.querySelector("#categories-chart"), options);
+            this.categoriesChart.render();
+        },
+
+        initResolutionTimeChart() {
+            const options = {
+                series: [],
+                chart: {
+                    height: 300,
+                    type: 'bar',
+                    toolbar: { show: false },
+                    fontFamily: 'Inter, sans-serif',
+                    foreColor: this.getChartTextColor(),
+                    background: 'transparent',
+                    animations: {
+                        enabled: true,
+                        easing: 'easeinout',
+                        speed: 800
+                    }
+                },
+                plotOptions: { 
+                    bar: { 
+                        horizontal: false,
+                        borderRadius: 8,
+                        columnWidth: '60%'
+                    } 
+                },
+                dataLabels: { 
+                    enabled: true,
+                    formatter: (val) => `${val} j`,
+                    style: { fontSize: '12px', fontWeight: 600, colors: ['#fff'] }
+                },
+                xaxis: {
+                    categories: [],
+                    labels: { 
+                        style: { fontSize: '12px', colors: this.getChartTextColor() },
+                        rotate: -45
+                    },
+                    axisBorder: { show: false },
+                    axisTicks: { show: false }
+                },
+                yaxis: {
+                    title: { text: 'Jours', style: { fontSize: '14px', color: this.getChartTextColor() } },
+                    labels: { 
+                        formatter: (value) => `${Math.round(value)}j`,
+                        style: { fontSize: '12px', colors: this.getChartTextColor() }
+                    }
+                },
+                grid: { 
+                    borderColor: this.getChartBorderColor(),
+                    strokeDashArray: 3
+                },
+                colors: ['#10b981'],
+                tooltip: {
+                    y: { formatter: (val) => `${val} jours` },
+                    theme: document.documentElement.classList.contains('dark') ? 'dark' : 'light'
+                }
+            };
+            
+            this.resolutionTimeChart = new ApexCharts(document.querySelector("#resolution-time-chart"), options);
+            this.resolutionTimeChart.render();
+        },
+
+        updateTimeSeriesChartData(data) {
+            if (this.timeSeriesChart && data.dates) {
+                this.timeSeriesChart.updateOptions({
+                    xaxis: { categories: data.dates },
+                    series: [
+                        { 
+                            name: 'Problèmes', 
+                            data: data.problems || [],
+                            color: '#ef4444'
+                        },
+                        { 
+                            name: 'Réclamations', 
+                            data: data.complaints || [],
+                            color: '#0ea5e9'
+                        }
+                    ]
+                });
+            }
+        },
+
+        updateStatusChartData(data) {
+            if (this.statusChart && data.labels && data.series) {
+                this.statusChart.updateOptions({
+                    labels: data.labels,
+                    series: data.series
+                });
+            }
+        },
+
+        updateCategoriesChartData(data) {
+            if (this.categoriesChart && data.labels && data.series) {
+                this.categoriesChart.updateOptions({
+                    xaxis: { categories: data.labels },
+                    series: [{ name: 'Signalements', data: data.series }]
+                });
+            }
+        },
+
+        updateResolutionTimeChartData(data) {
+            if (this.resolutionTimeChart && Array.isArray(data)) {
+                const labels = data.map(item => item.category);
+                const series = data.map(item => Math.round(item.avg_days));
+                
+                this.resolutionTimeChart.updateOptions({
+                    xaxis: { categories: labels },
+                    series: [{ name: 'Temps moyen', data: series }]
+                });
+            }
+        },
+
+        updateMap(data) {
+            const mapElement = document.getElementById('problem-map');
+            const legendElement = document.getElementById('map-legend');
+            
+            if (!mapElement) return;
+
+            // Clear existing map
+            if (this.map) {
+                this.map.remove();
+                this.map = null;
+            }
+
+            const mapboxToken = "pk.eyJ1IjoibG9xbWVkb3UiLCJhIjoiY205ZnltODdnMDcwajJqc2NpdnpvcGliZiJ9.VD0biSZFWDkxdsxt8ksEKw";
+            
+            if (!mapboxToken) {
+                mapElement.innerHTML = `<div class="map-error-message">
+                    <div class="text-center">
+                        <i class="fas fa-map-marked-alt text-4xl text-secondary-400 mb-4"></i>
+                        <p class="font-medium">Configuration de la carte manquante</p>
+                        <p class="text-sm">Token Mapbox requis</p>
+                    </div>
+                </div>`;
+                return;
+            }
+
+            if (data && data.length > 0) {
+                try {
+                    // Find center point
+                    const centerLat = data.reduce((sum, item) => sum + parseFloat(item.latitude), 0) / data.length;
+                    const centerLng = data.reduce((sum, item) => sum + parseFloat(item.longitude), 0) / data.length;
+                    
+                    // Initialize map with proper z-index
+                    this.map = L.map(mapElement, {
+                        zoomControl: true,
+                        attributionControl: true
+                    }).setView([centerLat, centerLng], 12);
+                    
+                    // Add tile layer
+                    L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token={accessToken}', {
+                        attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
+                        maxZoom: 18,
+                        id: 'mapbox/streets-v11',
+                        tileSize: 512,
+                        zoomOffset: -1,
+                        accessToken: mapboxToken
+                    }).addTo(this.map);
+
+                    // Show legend
+                    if (legendElement) {
+                        legendElement.style.display = 'block';
+                    }
+
+                    // Add markers with custom styling
+                    data.forEach(item => {
+                        const statusColors = {
+                            'PENDING': '#f59e0b',
+                            'IN_PROGRESS': '#0ea5e9', 
+                            'RESOLVED': '#10b981',
+                            'REJECTED': '#ef4444'
+                        };
+                        
+                        const color = statusColors[item.status] || '#6b7280';
+                        
+                        const customIcon = L.divIcon({
+                            html: `<div style="background-color: ${color}; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.3);"></div>`,
+                            iconSize: [20, 20],
+                            className: 'custom-marker'
+                        });
+                        
+                        L.marker([parseFloat(item.latitude), parseFloat(item.longitude)], { icon: customIcon })
+                            .bindPopup(`
+                                <div class="p-3 min-w-[200px]">
+                                    <h4 class="font-semibold text-sm mb-2 text-gray-800">${item.description.substring(0, 50)}...</h4>
+                                    <p class="text-xs text-gray-600 mb-1"><strong>Catégorie:</strong> ${item.category__name || 'N/A'}</p>
+                                    <p class="text-xs text-gray-600 mb-2"><strong>Statut:</strong> ${this.getStatusLabel(item.status)}</p>
+                                    <div class="flex justify-end">
+                                        <button class="text-xs bg-primary-600 text-white px-2 py-1 rounded hover:bg-primary-700">
+                                            Voir détails
+                                        </button>
+                                    </div>
+                                </div>
+                            `)
+                            .addTo(this.map);
+                    });
+
+                    // Ensure map renders properly
+                    setTimeout(() => {
+                        if (this.map) {
+                            this.map.invalidateSize();
+                        }
+                    }, 100);
+
+                } catch (e) {
+                    console.error("Error initializing map:", e);
+                    mapElement.innerHTML = `<div class="map-error-message">
+                        <div class="text-center">
+                            <i class="fas fa-exclamation-triangle text-4xl text-danger-400 mb-4"></i>
+                            <p class="font-medium">Erreur lors du chargement de la carte</p>
+                            <p class="text-sm">${e.message}</p>
+                        </div>
+                    </div>`;
+                }
+            } else {
+                mapElement.innerHTML = `<div class="map-error-message">
+                    <div class="text-center">
+                        <i class="fas fa-map text-4xl text-secondary-400 mb-4"></i>
+                        <p class="font-medium">Aucune donnée géographique</p>
+                        <p class="text-sm">Les signalements avec localisation apparaîtront ici</p>
+                    </div>
+                </div>`;
+            }
+        },
+
+        updateTimeSeriesChart(type) {
+            // This would update the chart based on the selected type
+            this.showToast(`Affichage: ${type}`, 'info', 1500);
+        },
+
+        updateStatusChart(type) {
+            // This would update the status chart based on the selected type
+            this.showToast(`Statuts: ${type}`, 'info', 1500);
+        },
+
+        async exportCharts() {
+            this.showToast('Exportation des graphiques...', 'info');
+            
+            try {
+                const charts = [
+                    { chart: this.timeSeriesChart, name: 'tendances-temporelles' },
+                    { chart: this.statusChart, name: 'distribution-statuts' },
+                    { chart: this.categoriesChart, name: 'top-categories' },
+                    { chart: this.resolutionTimeChart, name: 'temps-resolution' }
+                ];
+
+                for (const { chart, name } of charts) {
+                    if (chart) {
+                        const { imgURI } = await chart.dataURI();
+                        const link = document.createElement('a');
+                        link.href = imgURI;
+                        link.download = `${name}.png`;
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                    }
+                }
+                
+                this.showToast('Graphiques exportés avec succès!', 'success');
+            } catch (error) {
+                console.error('Export error:', error);
+                this.showToast('Erreur lors de l\'exportation', 'error');
+            }
+        },
+
+        generateReport() {
+            this.showToast('Génération du rapport...', 'info');
+            window.open('/muni_admin/reports/', '_blank');
+        },
+
+        getChartTextColor() {
+            return document.documentElement.classList.contains('dark') ? '#e2e8f0' : '#64748b';
+        },
+
+        getChartBorderColor() {
+            return document.documentElement.classList.contains('dark') ? '#334155' : '#e2e8f0';
+        },
+
+        showToast(message, type = 'info', duration = 3000) {
+            if (typeof showToast === 'function') {
+                showToast(message, type, duration);
+            } else {
+                console.log(`${type.toUpperCase()}: ${message}`);
+            }
+        }
+    }
+}
+
+// Initialize dashboard when Alpine is ready
+document.addEventListener('alpine:init', () => {
+    Alpine.data('dashboard', dashboard);
+});
+
+// Update chart colors when dark mode changes
+document.addEventListener('DOMContentLoaded', () => {
+    const darkModeToggle = document.getElementById('darkModeToggle');
+    if (darkModeToggle) {
+        darkModeToggle.addEventListener('click', () => {
+            setTimeout(() => {
+                // Reinitialize charts with new colors after theme change
+                const dashboardComponent = Alpine.$data(document.querySelector('[x-data*="dashboard"]'));
+                if (dashboardComponent) {
+                    dashboardComponent.initCharts();
+                    dashboardComponent.loadInitialData();
+                }
+            }, 100);
         });
-    </script>
+    }
+});
+</script>
 {% endblock %}

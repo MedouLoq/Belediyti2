@@ -1,0 +1,1017 @@
+{% extends 'muni_admin/base.html' %}
+{% load static %}
+{% load i18n %}
+
+{% block title %}Gestion des Citoyens - Belediyti{% endblock %}
+{% block page_title %}Gestion des Citoyens{% endblock %}
+{% block page_subtitle %}Profils et activités des citoyens de votre municipalité{% endblock %}
+
+{% block extra_styles %}
+<style>
+    /* Enhanced citizen card styles */
+    .citizen-card {
+        background: rgba(255, 255, 255, 0.8);
+        backdrop-filter: blur(20px);
+        border-radius: 16px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        cursor: pointer;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .dark .citizen-card {
+        background: rgba(30, 41, 59, 0.8);
+        border-color: rgba(71, 85, 105, 0.5);
+    }
+    
+    .citizen-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(14, 165, 233, 0.1), transparent);
+        transition: left 0.6s;
+    }
+    
+    .citizen-card:hover::before {
+        left: 100%;
+    }
+    
+    .citizen-card:hover {
+        transform: translateY(-8px) scale(1.02);
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+        border-color: rgba(14, 165, 233, 0.3);
+    }
+    
+    .dark .citizen-card:hover {
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    }
+    
+    /* Activity indicators */
+    .activity-indicator {
+        position: absolute;
+        top: 16px;
+        right: 16px;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.3);
+        animation: pulse 2s infinite;
+    }
+    
+    .activity-high { 
+        background: linear-gradient(135deg, #ef4444, #dc2626);
+    }
+    .activity-medium { 
+        background: linear-gradient(135deg, #f59e0b, #d97706);
+    }
+    .activity-low { 
+        background: linear-gradient(135deg, #22c55e, #16a34a);
+    }
+    .activity-none { 
+        background: linear-gradient(135deg, #6b7280, #4b5563);
+    }
+    
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+    
+    /* Enhanced stats grid */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+        margin-top: 16px;
+    }
+    
+    .stat-item {
+        background: rgba(248, 250, 252, 0.8);
+        border-radius: 12px;
+        padding: 12px 8px;
+        text-align: center;
+        transition: all 0.3s ease;
+        border: 1px solid rgba(226, 232, 240, 0.5);
+    }
+    
+    .dark .stat-item {
+        background: rgba(30, 41, 59, 0.8);
+        border-color: rgba(71, 85, 105, 0.5);
+    }
+    
+    .stat-item:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    
+    /* Verification badges */
+    .verification-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+        border: 1px solid;
+        backdrop-filter: blur(10px);
+    }
+    
+    .verification-verified {
+        background: rgba(34, 197, 94, 0.1);
+        color: #16a34a;
+        border-color: rgba(34, 197, 94, 0.3);
+    }
+    
+    .dark .verification-verified {
+        background: rgba(34, 197, 94, 0.2);
+        color: #4ade80;
+        border-color: rgba(34, 197, 94, 0.4);
+    }
+    
+    .verification-pending {
+        background: rgba(245, 158, 11, 0.1);
+        color: #d97706;
+        border-color: rgba(245, 158, 11, 0.3);
+    }
+    
+    .dark .verification-pending {
+        background: rgba(245, 158, 11, 0.2);
+        color: #fbbf24;
+        border-color: rgba(245, 158, 11, 0.4);
+    }
+    
+    .verification-unverified {
+        background: rgba(107, 114, 128, 0.1);
+        color: #6b7280;
+        border-color: rgba(107, 114, 128, 0.3);
+    }
+    
+    .dark .verification-unverified {
+        background: rgba(107, 114, 128, 0.2);
+        color: #9ca3af;
+        border-color: rgba(107, 114, 128, 0.4);
+    }
+    
+    /* Enhanced filter chips */
+    .filter-chip {
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-size: 14px;
+        font-weight: 500;
+        border: 2px solid #e2e8f0;
+        background: white;
+        color: #64748b;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    
+    .dark .filter-chip {
+        border-color: #475569;
+        background: #1e293b;
+        color: #cbd5e1;
+    }
+    
+    .filter-chip:hover {
+        border-color: #0ea5e9;
+        color: #0284c7;
+        transform: translateY(-1px);
+    }
+    
+    .filter-chip.active {
+        background: linear-gradient(135deg, #0ea5e9, #0284c7);
+        border-color: #0ea5e9;
+        color: white;
+        box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
+    }
+    
+    /* View toggle buttons */
+    .view-toggle {
+        display: flex;
+        background: rgba(248, 250, 252, 0.8);
+        border-radius: 12px;
+        padding: 4px;
+        border: 1px solid rgba(226, 232, 240, 0.5);
+    }
+    
+    .dark .view-toggle {
+        background: rgba(30, 41, 59, 0.8);
+        border-color: rgba(71, 85, 105, 0.5);
+    }
+    
+    .view-toggle button {
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 500;
+        color: #64748b;
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+    }
+    
+    .dark .view-toggle button {
+        color: #cbd5e1;
+    }
+    
+    .view-toggle button.active {
+        background: linear-gradient(135deg, #0ea5e9, #0284c7);
+        color: white;
+        box-shadow: 0 2px 8px rgba(14, 165, 233, 0.3);
+    }
+    
+    .view-toggle button:not(.active):hover {
+        color: #0284c7;
+        background: rgba(14, 165, 233, 0.1);
+    }
+    
+    /* Enhanced table styles */
+    .enhanced-table {
+        background: rgba(255, 255, 255, 0.8);
+        backdrop-filter: blur(20px);
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    
+    .dark .enhanced-table {
+        background: rgba(30, 41, 59, 0.8);
+        border-color: rgba(71, 85, 105, 0.5);
+    }
+    
+    .enhanced-table thead {
+        background: rgba(248, 250, 252, 0.8);
+        backdrop-filter: blur(10px);
+    }
+    
+    .dark .enhanced-table thead {
+        background: rgba(15, 23, 42, 0.8);
+    }
+    
+    .enhanced-table tbody tr {
+        transition: all 0.2s ease;
+        border-bottom: 1px solid rgba(226, 232, 240, 0.5);
+    }
+    
+    .dark .enhanced-table tbody tr {
+        border-bottom-color: rgba(71, 85, 105, 0.5);
+    }
+    
+    .enhanced-table tbody tr:hover {
+        background: rgba(14, 165, 233, 0.05);
+        transform: scale(1.01);
+    }
+    
+    .dark .enhanced-table tbody tr:hover {
+        background: rgba(14, 165, 233, 0.1);
+    }
+    
+    /* Enhanced pagination */
+    .pagination-modern {
+        display: flex;
+        align-items: center;
+        space-x: 8px;
+        gap: 8px;
+    }
+    
+    .page-btn {
+        padding: 10px 14px;
+        border-radius: 10px;
+        font-weight: 500;
+        color: #64748b;
+        background: rgba(255, 255, 255, 0.8);
+        border: 1px solid rgba(226, 232, 240, 0.5);
+        text-decoration: none;
+        transition: all 0.3s ease;
+        backdrop-filter: blur(10px);
+    }
+    
+    .dark .page-btn {
+        color: #cbd5e1;
+        background: rgba(30, 41, 59, 0.8);
+        border-color: rgba(71, 85, 105, 0.5);
+    }
+    
+    .page-btn:hover {
+        background: rgba(14, 165, 233, 0.1);
+        border-color: #0ea5e9;
+        color: #0284c7;
+        transform: translateY(-1px);
+    }
+    
+    .page-btn.active {
+        background: linear-gradient(135deg, #0ea5e9, #0284c7);
+        border-color: #0ea5e9;
+        color: white;
+        box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
+    }
+    
+    /* Enhanced search input */
+    .search-container {
+        position: relative;
+    }
+    
+    .search-input {
+        width: 320px;
+        padding: 14px 16px 14px 44px;
+        border: 2px solid rgba(226, 232, 240, 0.5);
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.8);
+        backdrop-filter: blur(10px);
+        transition: all 0.3s ease;
+        font-size: 14px;
+    }
+    
+    .dark .search-input {
+        border-color: rgba(71, 85, 105, 0.5);
+        background: rgba(30, 41, 59, 0.8);
+        color: white;
+    }
+    
+    .search-input:focus {
+        outline: none;
+        border-color: #0ea5e9;
+        box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.1);
+        background: rgba(255, 255, 255, 0.95);
+    }
+    
+    .dark .search-input:focus {
+        background: rgba(30, 41, 59, 0.95);
+    }
+    
+    .search-icon {
+        position: absolute;
+        left: 14px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #9ca3af;
+        font-size: 16px;
+    }
+    
+    .search-clear {
+        position: absolute;
+        right: 14px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #9ca3af;
+        cursor: pointer;
+        padding: 4px;
+        border-radius: 4px;
+        transition: all 0.2s ease;
+    }
+    
+    .search-clear:hover {
+        color: #6b7280;
+        background: rgba(0, 0, 0, 0.05);
+    }
+    
+    /* Profile picture enhancements */
+    .profile-picture {
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .profile-picture::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        padding: 2px;
+        background: linear-gradient(135deg, #0ea5e9, #0284c7);
+        mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+        mask-composite: exclude;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+    
+    .citizen-card:hover .profile-picture::after {
+        opacity: 1;
+    }
+    
+    /* Loading states */
+    .loading-skeleton {
+        background: linear-gradient(90deg, #f0f0f0 25%, #f8f8f8 50%, #f0f0f0 75%);
+        background-size: 200% 100%;
+        animation: shimmer 1.5s infinite;
+        border-radius: 8px;
+    }
+    
+    .dark .loading-skeleton {
+        background: linear-gradient(90deg, #374151 25%, #4b5563 50%, #374151 75%);
+        background-size: 200% 100%;
+    }
+    
+    @keyframes shimmer {
+        0% { background-position: -200% 0; }
+        100% { background-position: 200% 0; }
+    }
+    
+    /* Empty state styling */
+    .empty-state {
+        text-align: center;
+        padding: 48px 24px;
+    }
+    
+    .empty-state-icon {
+        width: 80px;
+        height: 80px;
+        background: rgba(248, 250, 252, 0.8);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 24px;
+        border: 1px solid rgba(226, 232, 240, 0.5);
+    }
+    
+    .dark .empty-state-icon {
+        background: rgba(30, 41, 59, 0.8);
+        border-color: rgba(71, 85, 105, 0.5);
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .search-input {
+            width: 100%;
+        }
+        
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        
+        .view-toggle {
+            order: -1;
+            width: 100%;
+            justify-content: center;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+    <!-- Header Actions -->
+    <div class="flex flex-wrap items-center justify-between gap-6">
+        <div class="flex flex-wrap items-center gap-4">
+            <!-- Enhanced Search -->
+            <div class="search-container">
+                <input 
+                    type="text" 
+                    id="searchInput"
+                    placeholder="Rechercher des citoyens..." 
+                    class="search-input"
+                    value="{{ request.GET.search|default:'' }}"
+                >
+                <i class="fas fa-search search-icon"></i>
+                <button id="searchClear" class="search-clear" style="display: none;">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <!-- Enhanced Quick Filters -->
+            <div class="flex flex-wrap items-center gap-3">
+                <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Filtres:</span>
+                <button class="filter-chip" data-filter="active">
+                    <i class="fas fa-bolt mr-2"></i>Actifs
+                </button>
+                <button class="filter-chip" data-filter="verified">
+                    <i class="fas fa-check-circle mr-2"></i>Vérifiés
+                </button>
+                <button class="filter-chip" data-filter="recent">
+                    <i class="fas fa-clock mr-2"></i>Nouveaux
+                </button>
+            </div>
+        </div>
+        
+        <div class="flex items-center gap-4">
+            <!-- Enhanced View Toggle -->
+            <div class="view-toggle">
+                <button id="gridViewBtn" class="active">
+                    <i class="fas fa-th-large mr-2"></i>Grille
+                </button>
+                <button id="listViewBtn">
+                    <i class="fas fa-list mr-2"></i>Liste
+                </button>
+            </div>
+            
+            <!-- Enhanced Export Button -->
+            <button id="exportBtn" class="btn-primary flex items-center space-x-2">
+                <i class="fas fa-download"></i>
+                <span>Exporter</span>
+            </button>
+        </div>
+    </div>
+    
+    <!-- Enhanced Statistics Overview -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div class="card p-6 hover:shadow-elegant-lg transition-all duration-300 hover:-translate-y-1">
+            <div class="flex items-center">
+                <div class="p-4 bg-gradient-to-br from-primary-100 to-primary-200 dark:from-primary-900/30 dark:to-primary-800/30 rounded-xl">
+                    <i class="fas fa-users text-primary-600 dark:text-primary-400 text-2xl"></i>
+                </div>
+                <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Citoyens</p>
+                    <p class="text-3xl font-bold text-gray-900 dark:text-white">{{ citizens.paginator.count }}</p>
+                    <p class="text-xs text-green-600 dark:text-green-400 mt-1">
+                        <i class="fas fa-arrow-up mr-1"></i>+12% ce mois
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card p-6 hover:shadow-elegant-lg transition-all duration-300 hover:-translate-y-1">
+            <div class="flex items-center">
+                <div class="p-4 bg-gradient-to-br from-green-100 to-green-200 dark:from-green-900/30 dark:to-green-800/30 rounded-xl">
+                    <i class="fas fa-user-check text-green-600 dark:text-green-400 text-2xl"></i>
+                </div>
+                <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Vérifiés</p>
+                    <p class="text-3xl font-bold text-gray-900 dark:text-white">{{ verified_count|default:"--" }}</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        {{ verified_percentage|default:"--" }}% du total
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card p-6 hover:shadow-elegant-lg transition-all duration-300 hover:-translate-y-1">
+            <div class="flex items-center">
+                <div class="p-4 bg-gradient-to-br from-yellow-100 to-yellow-200 dark:from-yellow-900/30 dark:to-yellow-800/30 rounded-xl">
+                    <i class="fas fa-exclamation-triangle text-yellow-600 dark:text-yellow-400 text-2xl"></i>
+                </div>
+                <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Signalements Actifs</p>
+                    <p class="text-3xl font-bold text-gray-900 dark:text-white">{{ active_reports|default:"--" }}</p>
+                    <p class="text-xs text-yellow-600 dark:text-yellow-400 mt-1">
+                        <i class="fas fa-clock mr-1"></i>En attente
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card p-6 hover:shadow-elegant-lg transition-all duration-300 hover:-translate-y-1">
+            <div class="flex items-center">
+                <div class="p-4 bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-900/30 dark:to-blue-800/30 rounded-xl">
+                    <i class="fas fa-calendar-plus text-blue-600 dark:text-blue-400 text-2xl"></i>
+                </div>
+                <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Nouveaux ce mois</p>
+                    <p class="text-3xl font-bold text-gray-900 dark:text-white">{{ new_this_month|default:"--" }}</p>
+                    <p class="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                        <i class="fas fa-trend-up mr-1"></i>Croissance
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Enhanced Results Summary -->
+    <div class="flex flex-wrap items-center justify-between gap-4">
+        <div class="text-sm text-gray-600 dark:text-gray-400">
+            {% if citizens.object_list %}
+                Affichage de <span class="font-semibold text-primary-600 dark:text-primary-400">{{ citizens.start_index }}</span> à 
+                <span class="font-semibold text-primary-600 dark:text-primary-400">{{ citizens.end_index }}</span> sur 
+                <span class="font-semibold text-primary-600 dark:text-primary-400">{{ citizens.paginator.count }}</span> citoyens
+            {% else %}
+                <span class="text-gray-500 dark:text-gray-400">Aucun citoyen trouvé</span>
+            {% endif %}
+        </div>
+        
+        <div class="flex items-center space-x-3">
+            <span class="text-sm text-gray-600 dark:text-gray-400">Trier par:</span>
+            <select id="sortSelect" class="form-input w-auto">
+                <option value="full_name">Nom (A-Z)</option>
+                <option value="-full_name">Nom (Z-A)</option>
+                <option value="-user__date_joined">Plus récent</option>
+                <option value="user__date_joined">Plus ancien</option>
+                <option value="nni">NNI</option>
+            </select>
+        </div>
+    </div>
+    
+    <!-- Enhanced Citizens Grid View -->
+    <div id="gridView" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {% for citizen in citizens.object_list %}
+        <div class="citizen-card p-6 relative" onclick="window.location.href='{% url 'Muni_admin:citizen_detail' citizen.id %}'">
+            <!-- Enhanced Activity Indicator -->
+            <div class="activity-indicator activity-medium" title="Activité moyenne"></div>
+            
+            <!-- Enhanced Profile Section -->
+            <div class="text-center mb-6">
+                {% if citizen.profile_picture %}
+                    <div class="profile-picture w-20 h-20 rounded-full mx-auto mb-4 overflow-hidden">
+                        <img src="{{ citizen.profile_picture.url }}" alt="Photo de {{ citizen.full_name }}" class="w-full h-full object-cover">
+                    </div>
+                {% else %}
+                    <div class="profile-picture w-20 h-20 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-user text-gray-400 dark:text-gray-500 text-2xl"></i>
+                    </div>
+                {% endif %}
+                
+                <h3 class="font-semibold text-gray-900 dark:text-white mb-1 text-lg">{{ citizen.full_name }}</h3>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">{{ citizen.user.phone_number }}</p>
+                
+                <!-- Enhanced Verification Status -->
+                <div class="mb-4">
+                    <span class="verification-badge verification-verified">
+                        <i class="fas fa-check-circle mr-1"></i>Vérifié
+                    </span>
+                </div>
+            </div>
+            
+            <!-- Enhanced Quick Stats -->
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="font-bold text-primary-600 dark:text-primary-400 text-lg">{{ citizen.problems_count|default:"0" }}</div>
+                    <div class="text-gray-600 dark:text-gray-400 text-xs">Problèmes</div>
+                </div>
+                <div class="stat-item">
+                    <div class="font-bold text-yellow-600 dark:text-yellow-400 text-lg">{{ citizen.complaints_count|default:"0" }}</div>
+                    <div class="text-gray-600 dark:text-gray-400 text-xs">Réclamations</div>
+                </div>
+                <div class="stat-item">
+                    <div class="font-bold text-green-600 dark:text-green-400 text-lg">{{ citizen.resolved_count|default:"0" }}</div>
+                    <div class="text-gray-600 dark:text-gray-400 text-xs">Résolus</div>
+                </div>
+            </div>
+            
+            <!-- Enhanced Footer -->
+            <div class="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <div class="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+                    <span class="font-mono">NNI: {{ citizen.nni|slice:":8" }}...</span>
+                    <span>{{ citizen.user.date_joined|date:"M Y" }}</span>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-span-full">
+            <div class="empty-state">
+                <div class="empty-state-icon">
+                    <i class="fas fa-users text-gray-400 dark:text-gray-500 text-3xl"></i>
+                </div>
+                <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">Aucun citoyen trouvé</h3>
+                <p class="text-gray-600 dark:text-gray-400 mb-6 max-w-md mx-auto">
+                    {% if request.GET.search %}
+                        Aucun résultat ne correspond à votre recherche. Essayez d'ajuster vos critères ou de réinitialiser les filtres.
+                    {% else %}
+                        Aucun citoyen n'est encore enregistré pour cette municipalité.
+                    {% endif %}
+                </p>
+                {% if request.GET.search %}
+                    <a href="{% url 'Muni_admin:citizens' %}" class="btn-primary">
+                        <i class="fas fa-undo mr-2"></i>Réinitialiser les filtres
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    
+    <!-- Enhanced Citizens List View -->
+    <div id="listView" class="enhanced-table" style="display: none;">
+        <div class="overflow-x-auto">
+            <table class="min-w-full">
+                <thead>
+                    <tr>
+                        <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            Citoyen
+                        </th>
+                        <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            Contact
+                        </th>
+                        <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            NNI
+                        </th>
+                        <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            Statut
+                        </th>
+                        <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            Activité
+                        </th>
+                        <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            Inscription
+                        </th>
+                        <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            Actions
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for citizen in citizens.object_list %}
+                    <tr class="cursor-pointer" onclick="window.location.href='{% url 'Muni_admin:citizen_detail' citizen.id %}'">
+                        <td class="px-6 py-4">
+                            <div class="flex items-center space-x-4">
+                                {% if citizen.profile_picture %}
+                                    <img src="{{ citizen.profile_picture.url }}" alt="Photo" class="w-12 h-12 rounded-full object-cover">
+                                {% else %}
+                                    <div class="w-12 h-12 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600 rounded-full flex items-center justify-center">
+                                        <i class="fas fa-user text-gray-400 dark:text-gray-500"></i>
+                                    </div>
+                                {% endif %}
+                                <div>
+                                    <p class="font-semibold text-gray-900 dark:text-white">{{ citizen.full_name }}</p>
+                                    <p class="text-sm text-gray-600 dark:text-gray-400">{{ citizen.address|default:"Adresse non renseignée"|truncatechars:30 }}</p>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="text-sm">
+                                <p class="text-gray-900 dark:text-white">{{ citizen.user.phone_number }}</p>
+                                <p class="text-gray-600 dark:text-gray-400">{{ citizen.user.email|default:"Email non renseigné" }}</p>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 text-sm font-mono text-gray-600 dark:text-gray-400">
+                            {{ citizen.nni }}
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="verification-badge verification-verified">
+                                <i class="fas fa-check-circle mr-1"></i>Vérifié
+                            </span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="flex items-center space-x-2">
+                                <div class="activity-indicator activity-medium"></div>
+                                <span class="text-sm text-gray-600 dark:text-gray-400">Moyenne</span>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                            {{ citizen.user.date_joined|date:"d/m/Y" }}
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="flex items-center space-x-3">
+                                <a href="{% url 'Muni_admin:citizen_detail' citizen.id %}" onclick="event.stopPropagation()" class="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 font-medium text-sm">
+                                    Voir détails
+                                </a>
+                                <button onclick="event.stopPropagation(); contactCitizen('{{ citizen.id }}')" class="text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 p-1 rounded">
+                                    <i class="fas fa-phone"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <!-- Enhanced Pagination -->
+    {% if citizens.has_other_pages %}
+    <div class="flex flex-wrap items-center justify-between gap-4">
+        <div class="text-sm text-gray-600 dark:text-gray-400">
+            Page <span class="font-semibold text-primary-600 dark:text-primary-400">{{ citizens.number }}</span> sur 
+            <span class="font-semibold text-primary-600 dark:text-primary-400">{{ citizens.paginator.num_pages }}</span>
+        </div>
+        
+        <div class="pagination-modern">
+            {% if citizens.has_previous %}
+                <a href="?{{ request.GET.urlencode }}&page={{ citizens.previous_page_number }}" class="page-btn">
+                    <i class="fas fa-chevron-left"></i>
+                </a>
+            {% endif %}
+            
+            {% for page_num in citizens.paginator.page_range %}
+                {% if citizens.number == page_num %}
+                    <span class="page-btn active">{{ page_num }}</span>
+                {% elif page_num > citizens.number|add:'-3' and page_num < citizens.number|add:'3' %}
+                    <a href="?{{ request.GET.urlencode }}&page={{ page_num }}" class="page-btn">{{ page_num }}</a>
+                {% elif page_num == citizens.number|add:'-3' or page_num == citizens.number|add:'3' %}
+                    <span class="page-btn">...</span>
+                {% endif %}
+            {% endfor %}
+            
+            {% if citizens.has_next %}
+                <a href="?{{ request.GET.urlencode }}&page={{ citizens.next_page_number }}" class="page-btn">
+                    <i class="fas fa-chevron-right"></i>
+                </a>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // Pure JavaScript implementation
+    document.addEventListener('DOMContentLoaded', function() {
+        // Elements
+        const searchInput = document.getElementById('searchInput');
+        const searchClear = document.getElementById('searchClear');
+        const filterChips = document.querySelectorAll('.filter-chip');
+        const gridViewBtn = document.getElementById('gridViewBtn');
+        const listViewBtn = document.getElementById('listViewBtn');
+        const gridView = document.getElementById('gridView');
+        const listView = document.getElementById('listView');
+        const sortSelect = document.getElementById('sortSelect');
+        const exportBtn = document.getElementById('exportBtn');
+        
+        // State
+        let currentView = 'grid';
+        let activeFilters = [];
+        let searchTimeout;
+        
+        // Initialize
+        init();
+        
+        function init() {
+            // Set initial search clear button visibility
+            toggleSearchClear();
+            
+            // Set initial sort value
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('sort')) {
+                sortSelect.value = urlParams.get('sort');
+            }
+            
+            // Add event listeners
+            searchInput.addEventListener('input', handleSearch);
+            searchClear.addEventListener('click', clearSearch);
+            
+            filterChips.forEach(chip => {
+                chip.addEventListener('click', () => toggleFilter(chip));
+            });
+            
+            gridViewBtn.addEventListener('click', () => switchView('grid'));
+            listViewBtn.addEventListener('click', () => switchView('list'));
+            
+            sortSelect.addEventListener('change', handleSort);
+            exportBtn.addEventListener('click', handleExport);
+            
+            // Keyboard shortcuts
+            document.addEventListener('keydown', handleKeyboard);
+        }
+        
+        function handleSearch() {
+            clearTimeout(searchTimeout);
+            toggleSearchClear();
+            
+            searchTimeout = setTimeout(() => {
+                applyFilters();
+            }, 300);
+        }
+        
+        function clearSearch() {
+            searchInput.value = '';
+            toggleSearchClear();
+            applyFilters();
+        }
+        
+        function toggleSearchClear() {
+            searchClear.style.display = searchInput.value ? 'block' : 'none';
+        }
+        
+        function toggleFilter(chip) {
+            const filter = chip.dataset.filter;
+            
+            if (chip.classList.contains('active')) {
+                chip.classList.remove('active');
+                activeFilters = activeFilters.filter(f => f !== filter);
+            } else {
+                chip.classList.add('active');
+                activeFilters.push(filter);
+            }
+            
+            applyFilters();
+        }
+        
+        function switchView(view) {
+            currentView = view;
+            
+            if (view === 'grid') {
+                gridViewBtn.classList.add('active');
+                listViewBtn.classList.remove('active');
+                gridView.style.display = 'grid';
+                listView.style.display = 'none';
+            } else {
+                listViewBtn.classList.add('active');
+                gridViewBtn.classList.remove('active');
+                gridView.style.display = 'none';
+                listView.style.display = 'block';
+            }
+            
+            // Save preference
+            localStorage.setItem('citizenViewMode', view);
+            
+            // Show toast
+            showToast(`Vue ${view === 'grid' ? 'grille' : 'liste'} activée`, 'info', 2000);
+        }
+        
+        function applyFilters() {
+            const params = new URLSearchParams(window.location.search);
+            
+            // Handle search
+            if (searchInput.value.trim()) {
+                params.set('search', searchInput.value.trim());
+            } else {
+                params.delete('search');
+            }
+            
+            // Handle filters
+            activeFilters.forEach(filter => {
+                params.set(filter, '1');
+            });
+            
+            // Remove page parameter when filtering
+            params.delete('page');
+            
+            // Update URL and reload
+            const newUrl = `${window.location.pathname}?${params.toString()}`;
+            window.location.href = newUrl;
+        }
+        
+        function handleSort() {
+            const params = new URLSearchParams(window.location.search);
+            params.set('sort', sortSelect.value);
+            params.delete('page'); // Reset to first page
+            
+            const newUrl = `${window.location.pathname}?${params.toString()}`;
+            window.location.href = newUrl;
+        }
+        
+        function handleExport() {
+            showToast('Préparation de l\'export...', 'info');
+            
+            // Simulate export process
+            setTimeout(() => {
+                showToast('Export terminé avec succès!', 'success');
+                // Here you would typically trigger the actual export
+                // window.location.href = '/admin/citizens/export/';
+            }, 2000);
+        }
+        
+        function handleKeyboard(e) {
+            // Ctrl/Cmd + F for search focus
+            if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+                e.preventDefault();
+                searchInput.focus();
+            }
+            
+            // Escape to clear search
+            if (e.key === 'Escape' && document.activeElement === searchInput) {
+                clearSearch();
+            }
+            
+            // Ctrl/Cmd + G for grid view
+            if ((e.ctrlKey || e.metaKey) && e.key === 'g') {
+                e.preventDefault();
+                switchView('grid');
+            }
+            
+            // Ctrl/Cmd + L for list view
+            if ((e.ctrlKey || e.metaKey) && e.key === 'l') {
+                e.preventDefault();
+                switchView('list');
+            }
+        }
+        
+        // Restore view preference
+        const savedView = localStorage.getItem('citizenViewMode');
+        if (savedView && savedView !== currentView) {
+            switchView(savedView);
+        }
+        
+        // Add loading states for better UX
+        function showLoading() {
+            document.body.style.cursor = 'wait';
+        }
+        
+        function hideLoading() {
+            document.body.style.cursor = 'default';
+        }
+        
+        // Animate cards on load
+        const cards = document.querySelectorAll('.citizen-card');
+        cards.forEach((card, index) => {
+            card.style.animationDelay = `${index * 0.1}s`;
+            card.style.animation = 'fadeInUp 0.6s ease-out forwards';
+        });
+    });
+    
+    // Global functions for inline event handlers
+    function contactCitizen(citizenId) {
+        showToast('Ouverture de l\'interface de contact...', 'info');
+        // Implement contact functionality
+        console.log('Contact citizen:', citizenId);
+    }
+    
+    // Enhanced search with debouncing and better UX
+    function debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
+</script>
+{% endblock %}

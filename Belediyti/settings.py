@@ -24,7 +24,7 @@ CHINGUISOFT_VALIDATION_TOKEN = os.getenv('CHINGUISOFT_VALIDATION_TOKEN', '')
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'django-insecure-jgbv+g2ziypwb7hl^cx920f-h8*lt_ixh0i*o5=!-3i=7s0b1('
-
+GEMINI_API_KEY='AIzaSyAwsYcCUXCGK22FwDu8WDOPEX34DOeM1J0'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 CORS_ORIGIN_ALLOW_ALL = True  # ONLY for development

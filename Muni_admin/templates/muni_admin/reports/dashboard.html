@@ -1,0 +1,1432 @@
+{% extends 'muni_admin/base.html' %}
+{% load static %}
+{% load i18n %}
+
+{% block title %}Génération de Rapports - Belediyti{% endblock %}
+{% block page_title %}Génération de Rapports{% endblock %}
+{% block page_subtitle %}Créez des rapports personnalisés pour votre municipalité{% endblock %}
+
+{% block extra_styles %}
+<style>
+    /* Enhanced report card styles */
+    .report-card {
+        background: rgba(255, 255, 255, 0.8);
+        backdrop-filter: blur(20px);
+        border-radius: 20px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        border: 2px solid rgba(255, 255, 255, 0.2);
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        cursor: pointer;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .dark .report-card {
+        background: rgba(30, 41, 59, 0.8);
+        border-color: rgba(71, 85, 105, 0.5);
+    }
+    
+    .report-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(14, 165, 233, 0.1), transparent);
+        transition: left 0.6s;
+    }
+    
+    .report-card:hover::before {
+        left: 100%;
+    }
+    
+    .report-card:hover {
+        transform: translateY(-8px) scale(1.02);
+        box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+        border-color: rgba(14, 165, 233, 0.4);
+    }
+    
+    .dark .report-card:hover {
+        box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
+    }
+    
+    .report-card.selected {
+        border-color: #0ea5e9;
+        background: linear-gradient(135deg, rgba(14, 165, 233, 0.1) 0%, rgba(14, 165, 233, 0.05) 100%);
+        transform: translateY(-4px);
+        box-shadow: 0 20px 40px rgba(14, 165, 233, 0.2);
+    }
+    
+    .dark .report-card.selected {
+        background: linear-gradient(135deg, rgba(14, 165, 233, 0.2) 0%, rgba(14, 165, 233, 0.1) 100%);
+    }
+    
+    /* Enhanced form sections */
+    .form-section {
+        background: rgba(255, 255, 255, 0.8);
+        backdrop-filter: blur(20px);
+        border-radius: 20px;
+        padding: 32px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        transition: all 0.3s ease;
+    }
+    
+    .dark .form-section {
+        background: rgba(30, 41, 59, 0.8);
+        border-color: rgba(71, 85, 105, 0.5);
+    }
+    
+    .form-section:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+    }
+    
+    /* Enhanced checkbox cards */
+    .checkbox-card {
+        padding: 20px;
+        border: 2px solid rgba(226, 232, 240, 0.5);
+        border-radius: 16px;
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        background: rgba(255, 255, 255, 0.5);
+        backdrop-filter: blur(10px);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .dark .checkbox-card {
+        border-color: rgba(71, 85, 105, 0.5);
+        background: rgba(30, 41, 59, 0.5);
+    }
+    
+    .checkbox-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(14, 165, 233, 0.05), transparent);
+        transition: left 0.5s;
+    }
+    
+    .checkbox-card:hover::before {
+        left: 100%;
+    }
+    
+    .checkbox-card:hover {
+        border-color: rgba(14, 165, 233, 0.4);
+        background: rgba(14, 165, 233, 0.05);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(14, 165, 233, 0.1);
+    }
+    
+    .dark .checkbox-card:hover {
+        background: rgba(14, 165, 233, 0.1);
+    }
+    
+    .checkbox-card.checked {
+        border-color: #0ea5e9;
+        background: rgba(14, 165, 233, 0.1);
+        box-shadow: 0 4px 20px rgba(14, 165, 233, 0.2);
+    }
+    
+    .dark .checkbox-card.checked {
+        background: rgba(14, 165, 233, 0.2);
+    }
+    
+    /* Enhanced step indicators */
+    .step-container {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 48px;
+        padding: 24px;
+        background: rgba(255, 255, 255, 0.8);
+        backdrop-filter: blur(20px);
+        border-radius: 20px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    
+    .dark .step-container {
+        background: rgba(30, 41, 59, 0.8);
+        border-color: rgba(71, 85, 105, 0.5);
+    }
+    
+    .step-item {
+        display: flex;
+        align-items: center;
+        position: relative;
+    }
+    
+    .step-indicator {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        font-size: 16px;
+        font-weight: 600;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        z-index: 2;
+    }
+    
+    .step-indicator.active {
+        background: linear-gradient(135deg, #0ea5e9, #0284c7);
+        color: white;
+        box-shadow: 0 8px 25px rgba(14, 165, 233, 0.4);
+        transform: scale(1.1);
+    }
+    
+    .step-indicator.completed {
+        background: linear-gradient(135deg, #22c55e, #16a34a);
+        color: white;
+        box-shadow: 0 4px 15px rgba(34, 197, 94, 0.3);
+    }
+    
+    .step-indicator.inactive {
+        background: rgba(226, 232, 240, 0.8);
+        color: #64748b;
+        border: 2px solid rgba(226, 232, 240, 0.5);
+    }
+    
+    .dark .step-indicator.inactive {
+        background: rgba(71, 85, 105, 0.8);
+        color: #94a3b8;
+        border-color: rgba(71, 85, 105, 0.5);
+    }
+    
+    .step-connector {
+        width: 80px;
+        height: 4px;
+        background: rgba(226, 232, 240, 0.8);
+        border-radius: 2px;
+        margin: 0 16px;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .dark .step-connector {
+        background: rgba(71, 85, 105, 0.8);
+    }
+    
+    .step-connector.completed::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, #0ea5e9, #0284c7);
+        border-radius: 2px;
+        animation: fillProgress 0.6s ease-out;
+    }
+    
+    @keyframes fillProgress {
+        from { width: 0; }
+        to { width: 100%; }
+    }
+    
+    .step-label {
+        margin-left: 12px;
+        font-size: 14px;
+        font-weight: 500;
+        color: #64748b;
+        transition: color 0.3s ease;
+    }
+    
+    .dark .step-label {
+        color: #94a3b8;
+    }
+    
+    .step-item.active .step-label {
+        color: #0ea5e9;
+        font-weight: 600;
+    }
+    
+    .step-item.completed .step-label {
+        color: #22c55e;
+    }
+    
+    /* Enhanced preview section */
+    .preview-section {
+        background: linear-gradient(135deg, rgba(248, 250, 252, 0.9) 0%, rgba(241, 245, 249, 0.9) 100%);
+        backdrop-filter: blur(20px);
+        border-radius: 20px;
+        padding: 32px;
+        border: 1px solid rgba(226, 232, 240, 0.5);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    }
+    
+    .dark .preview-section {
+        background: linear-gradient(135deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.9) 100%);
+        border-color: rgba(71, 85, 105, 0.5);
+    }
+    
+    /* Enhanced format selection */
+    .format-option {
+        display: flex;
+        align-items: center;
+        padding: 20px;
+        border: 2px solid rgba(226, 232, 240, 0.5);
+        border-radius: 16px;
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        background: rgba(255, 255, 255, 0.5);
+        backdrop-filter: blur(10px);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .dark .format-option {
+        border-color: rgba(71, 85, 105, 0.5);
+        background: rgba(30, 41, 59, 0.5);
+    }
+    
+    .format-option::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(14, 165, 233, 0.05), transparent);
+        transition: left 0.5s;
+    }
+    
+    .format-option:hover::before {
+        left: 100%;
+    }
+    
+    .format-option:hover {
+        border-color: rgba(14, 165, 233, 0.4);
+        background: rgba(14, 165, 233, 0.05);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(14, 165, 233, 0.1);
+    }
+    
+    .format-option.selected {
+        border-color: #0ea5e9;
+        background: rgba(14, 165, 233, 0.1);
+        box-shadow: 0 4px 20px rgba(14, 165, 233, 0.2);
+    }
+    
+    /* Enhanced navigation buttons */
+    .nav-buttons {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding-top: 32px;
+        margin-top: 32px;
+        border-top: 1px solid rgba(226, 232, 240, 0.5);
+    }
+    
+    .dark .nav-buttons {
+        border-top-color: rgba(71, 85, 105, 0.5);
+    }
+    
+    /* Enhanced form inputs */
+    .enhanced-input {
+        width: 100%;
+        padding: 16px 20px;
+        border: 2px solid rgba(226, 232, 240, 0.5);
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.8);
+        backdrop-filter: blur(10px);
+        transition: all 0.3s ease;
+        font-size: 14px;
+    }
+    
+    .dark .enhanced-input {
+        border-color: rgba(71, 85, 105, 0.5);
+        background: rgba(30, 41, 59, 0.8);
+        color: white;
+    }
+    
+    .enhanced-input:focus {
+        outline: none;
+        border-color: #0ea5e9;
+        box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.1);
+        background: rgba(255, 255, 255, 0.95);
+    }
+    
+    .dark .enhanced-input:focus {
+        background: rgba(30, 41, 59, 0.95);
+    }
+    
+    /* Quick range buttons */
+    .quick-range-btn {
+        padding: 8px 16px;
+        border: 2px solid rgba(226, 232, 240, 0.5);
+        border-radius: 20px;
+        background: rgba(255, 255, 255, 0.8);
+        color: #64748b;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        backdrop-filter: blur(10px);
+    }
+    
+    .dark .quick-range-btn {
+        border-color: rgba(71, 85, 105, 0.5);
+        background: rgba(30, 41, 59, 0.8);
+        color: #94a3b8;
+    }
+    
+    .quick-range-btn:hover {
+        border-color: #0ea5e9;
+        background: rgba(14, 165, 233, 0.1);
+        color: #0284c7;
+        transform: translateY(-1px);
+    }
+    
+    .quick-range-btn.active {
+        border-color: #0ea5e9;
+        background: linear-gradient(135deg, #0ea5e9, #0284c7);
+        color: white;
+        box-shadow: 0 4px 15px rgba(14, 165, 233, 0.3);
+    }
+    
+    /* Enhanced category list */
+    .category-list {
+        max-height: 300px;
+        overflow-y: auto;
+        padding-right: 8px;
+    }
+    
+    .category-list::-webkit-scrollbar {
+        width: 6px;
+    }
+    
+    .category-list::-webkit-scrollbar-track {
+        background: rgba(226, 232, 240, 0.3);
+        border-radius: 10px;
+    }
+    
+    .category-list::-webkit-scrollbar-thumb {
+        background: linear-gradient(135deg, #0ea5e9, #0284c7);
+        border-radius: 10px;
+    }
+    
+    .category-item {
+        display: flex;
+        align-items: center;
+        padding: 12px 16px;
+        border-radius: 12px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        margin-bottom: 4px;
+    }
+    
+    .category-item:hover {
+        background: rgba(14, 165, 233, 0.05);
+        transform: translateX(4px);
+    }
+    
+    .dark .category-item:hover {
+        background: rgba(14, 165, 233, 0.1);
+    }
+    
+    /* Loading and animation states */
+    .generating-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.8);
+        backdrop-filter: blur(10px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.3s ease;
+    }
+    
+    .generating-overlay.active {
+        opacity: 1;
+        visibility: visible;
+    }
+    
+    .generating-content {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(20px);
+        border-radius: 20px;
+        padding: 40px;
+        text-align: center;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+        max-width: 400px;
+        width: 90%;
+    }
+    
+    .dark .generating-content {
+        background: rgba(30, 41, 59, 0.95);
+    }
+    
+    .progress-ring {
+        width: 80px;
+        height: 80px;
+        margin: 0 auto 24px;
+    }
+    
+    .progress-ring circle {
+        fill: none;
+        stroke: #e2e8f0;
+        stroke-width: 4;
+        stroke-linecap: round;
+        transform-origin: 50% 50%;
+        transform: rotate(-90deg);
+    }
+    
+    .progress-ring .progress {
+        stroke: #0ea5e9;
+        stroke-dasharray: 251.2;
+        stroke-dashoffset: 251.2;
+        animation: progress 2s ease-in-out infinite;
+    }
+    
+    @keyframes progress {
+        0% { stroke-dashoffset: 251.2; }
+        50% { stroke-dashoffset: 62.8; }
+        100% { stroke-dashoffset: 251.2; }
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .step-container {
+            flex-direction: column;
+            gap: 16px;
+        }
+        
+        .step-connector {
+            width: 4px;
+            height: 40px;
+            margin: 8px 0;
+        }
+        
+        .form-section {
+            padding: 24px;
+        }
+        
+        .report-card {
+            margin-bottom: 16px;
+        }
+    }
+    
+    /* Step transition animations */
+    .step-content {
+        animation: slideInRight 0.5s ease-out;
+    }
+    
+    @keyframes slideInRight {
+        from {
+            opacity: 0;
+            transform: translateX(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+    
+    .step-content.reverse {
+        animation: slideInLeft 0.5s ease-out;
+    }
+    
+    @keyframes slideInLeft {
+        from {
+            opacity: 0;
+            transform: translateX(-30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+    <!-- Enhanced Progress Steps -->
+    <div class="step-container">
+        <div class="step-item" id="step1">
+            <div class="step-indicator active" id="indicator1">
+                <i class="fas fa-file-alt"></i>
+            </div>
+            <div class="step-label">Type de rapport</div>
+        </div>
+        <div class="step-connector" id="connector1"></div>
+        
+        <div class="step-item" id="step2">
+            <div class="step-indicator inactive" id="indicator2">
+                <i class="fas fa-cog"></i>
+            </div>
+            <div class="step-label">Paramètres</div>
+        </div>
+        <div class="step-connector" id="connector2"></div>
+        
+        <div class="step-item" id="step3">
+            <div class="step-indicator inactive" id="indicator3">
+                <i class="fas fa-eye"></i>
+            </div>
+            <div class="step-label">Aperçu</div>
+        </div>
+        <div class="step-connector" id="connector3"></div>
+        
+        <div class="step-item" id="step4">
+            <div class="step-indicator inactive" id="indicator4">
+                <i class="fas fa-download"></i>
+            </div>
+            <div class="step-label">Génération</div>
+        </div>
+    </div>
+
+    <form method="post" action="{% url 'Muni_admin:generate_report' %}" id="reportForm">
+        {% csrf_token %}
+        
+        <!-- Step 1: Enhanced Report Type Selection -->
+        <div id="stepContent1" class="step-content">
+            <div class="form-section">
+                <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-8 text-center">
+                    <i class="fas fa-chart-line text-primary-600 mr-3"></i>
+                    Choisissez le type de rapport
+                </h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    <!-- Comprehensive Report -->
+                    <div class="report-card p-8" data-type="comprehensive">
+                        <input type="radio" name="report_type" value="comprehensive" class="sr-only">
+                        <div class="text-center">
+                            <div class="w-20 h-20 bg-gradient-to-br from-primary-100 to-primary-200 dark:from-primary-900/30 dark:to-primary-800/30 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                                <i class="fas fa-chart-line text-primary-600 dark:text-primary-400 text-3xl"></i>
+                            </div>
+                            <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-3">Rapport Complet</h3>
+                            <p class="text-gray-600 dark:text-gray-400 leading-relaxed">Analyse complète avec tous les indicateurs, graphiques et statistiques détaillées de votre municipalité.</p>
+                            <div class="mt-4 flex items-center justify-center text-sm text-primary-600 dark:text-primary-400">
+                                <i class="fas fa-clock mr-2"></i>
+                                <span>~2-3 minutes</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Problems Report -->
+                    <div class="report-card p-8" data-type="problems">
+                        <input type="radio" name="report_type" value="problems" class="sr-only">
+                        <div class="text-center">
+                            <div class="w-20 h-20 bg-gradient-to-br from-red-100 to-red-200 dark:from-red-900/30 dark:to-red-800/30 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                                <i class="fas fa-triangle-exclamation text-red-600 dark:text-red-400 text-3xl"></i>
+                            </div>
+                            <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-3">Rapport Problèmes</h3>
+                            <p class="text-gray-600 dark:text-gray-400 leading-relaxed">Focus sur les problèmes signalés, leur résolution et les tendances d'évolution.</p>
+                            <div class="mt-4 flex items-center justify-center text-sm text-red-600 dark:text-red-400">
+                                <i class="fas fa-clock mr-2"></i>
+                                <span>~1-2 minutes</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Complaints Report -->
+                    <div class="report-card p-8" data-type="complaints">
+                        <input type="radio" name="report_type" value="complaints" class="sr-only">
+                        <div class="text-center">
+                            <div class="w-20 h-20 bg-gradient-to-br from-yellow-100 to-yellow-200 dark:from-yellow-900/30 dark:to-yellow-800/30 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                                <i class="fas fa-file-signature text-yellow-600 dark:text-yellow-400 text-3xl"></i>
+                            </div>
+                            <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-3">Rapport Réclamations</h3>
+                            <p class="text-gray-600 dark:text-gray-400 leading-relaxed">Analyse détaillée des réclamations reçues et de leur traitement.</p>
+                            <div class="mt-4 flex items-center justify-center text-sm text-yellow-600 dark:text-yellow-400">
+                                <i class="fas fa-clock mr-2"></i>
+                                <span>~1-2 minutes</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Performance Report -->
+                    <div class="report-card p-8" data-type="performance">
+                        <input type="radio" name="report_type" value="performance" class="sr-only">
+                        <div class="text-center">
+                            <div class="w-20 h-20 bg-gradient-to-br from-green-100 to-green-200 dark:from-green-900/30 dark:to-green-800/30 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                                <i class="fas fa-chart-bar text-green-600 dark:text-green-400 text-3xl"></i>
+                            </div>
+                            <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-3">Rapport Performance</h3>
+                            <p class="text-gray-600 dark:text-gray-400 leading-relaxed">Indicateurs de performance et temps de résolution des services.</p>
+                            <div class="mt-4 flex items-center justify-center text-sm text-green-600 dark:text-green-400">
+                                <i class="fas fa-clock mr-2"></i>
+                                <span>~1 minute</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Geographic Report -->
+                    <div class="report-card p-8" data-type="geographic">
+                        <input type="radio" name="report_type" value="geographic" class="sr-only">
+                        <div class="text-center">
+                            <div class="w-20 h-20 bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-900/30 dark:to-blue-800/30 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                                <i class="fas fa-map-marked-alt text-blue-600 dark:text-blue-400 text-3xl"></i>
+                            </div>
+                            <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-3">Rapport Géographique</h3>
+                            <p class="text-gray-600 dark:text-gray-400 leading-relaxed">Distribution géographique des signalements avec cartes interactives.</p>
+                            <div class="mt-4 flex items-center justify-center text-sm text-blue-600 dark:text-blue-400">
+                                <i class="fas fa-clock mr-2"></i>
+                                <span>~2-3 minutes</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Custom Report -->
+                    <div class="report-card p-8" data-type="custom">
+                        <input type="radio" name="report_type" value="custom" class="sr-only">
+                        <div class="text-center">
+                            <div class="w-20 h-20 bg-gradient-to-br from-purple-100 to-purple-200 dark:from-purple-900/30 dark:to-purple-800/30 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                                <i class="fas fa-cogs text-purple-600 dark:text-purple-400 text-3xl"></i>
+                            </div>
+                            <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-3">Rapport Personnalisé</h3>
+                            <p class="text-gray-600 dark:text-gray-400 leading-relaxed">Créez un rapport sur mesure avec vos propres critères et métriques.</p>
+                            <div class="mt-4 flex items-center justify-center text-sm text-purple-600 dark:text-purple-400">
+                                <i class="fas fa-clock mr-2"></i>
+                                <span>Variable</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Step 2: Enhanced Parameters -->
+        <div id="stepContent2" class="step-content" style="display: none;">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- Enhanced Date Range -->
+                <div class="form-section">
+                    <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-6 flex items-center">
+                        <i class="fas fa-calendar-alt text-primary-600 mr-3"></i>
+                        Période d'analyse
+                    </h3>
+                    
+                    <div class="space-y-6">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Date de début</label>
+                                <input type="date" name="date_from" id="dateFrom" class="enhanced-input" {% if earliest_date %}min="{{ earliest_date }}"{% endif %}>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Date de fin</label>
+                                <input type="date" name="date_to" id="dateTo" class="enhanced-input">
+                            </div>
+                        </div>
+                        
+                        <!-- Enhanced Quick Date Ranges -->
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Sélection rapide</label>
+                            <div class="flex flex-wrap gap-3">
+                                <button type="button" class="quick-range-btn" data-range="week">
+                                    <i class="fas fa-calendar-week mr-2"></i>7 derniers jours
+                                </button>
+                                <button type="button" class="quick-range-btn" data-range="month">
+                                    <i class="fas fa-calendar-alt mr-2"></i>30 derniers jours
+                                </button>
+                                <button type="button" class="quick-range-btn" data-range="quarter">
+                                    <i class="fas fa-calendar mr-2"></i>3 derniers mois
+                                </button>
+                                <button type="button" class="quick-range-btn" data-range="year">
+                                    <i class="fas fa-calendar-check mr-2"></i>Année en cours
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Enhanced Content Options -->
+                <div class="form-section">
+                    <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-6 flex items-center">
+                        <i class="fas fa-list-check text-primary-600 mr-3"></i>
+                        Contenu du rapport
+                    </h3>
+                    
+                    <div class="space-y-4">
+                        <label class="checkbox-card">
+                            <div class="flex items-center">
+                                <input type="checkbox" name="include_problems" id="includeProblems" class="form-checkbox text-primary-600 mr-4 w-5 h-5" checked>
+                                <div class="flex-1">
+                                    <div class="flex items-center mb-1">
+                                        <i class="fas fa-exclamation-triangle text-red-500 mr-2"></i>
+                                        <div class="font-semibold text-gray-900 dark:text-white">Problèmes signalés</div>
+                                    </div>
+                                    <div class="text-sm text-gray-600 dark:text-gray-400">Inclure l'analyse détaillée des problèmes</div>
+                                </div>
+                            </div>
+                        </label>
+                        
+                        <label class="checkbox-card">
+                            <div class="flex items-center">
+                                <input type="checkbox" name="include_complaints" id="includeComplaints" class="form-checkbox text-primary-600 mr-4 w-5 h-5" checked>
+                                <div class="flex-1">
+                                    <div class="flex items-center mb-1">
+                                        <i class="fas fa-file-signature text-yellow-500 mr-2"></i>
+                                        <div class="font-semibold text-gray-900 dark:text-white">Réclamations</div>
+                                    </div>
+                                    <div class="text-sm text-gray-600 dark:text-gray-400">Inclure l'analyse des réclamations</div>
+                                </div>
+                            </div>
+                        </label>
+                        
+                        <label class="checkbox-card">
+                            <div class="flex items-center">
+                                <input type="checkbox" name="include_charts" id="includeCharts" class="form-checkbox text-primary-600 mr-4 w-5 h-5" checked>
+                                <div class="flex-1">
+                                    <div class="flex items-center mb-1">
+                                        <i class="fas fa-chart-pie text-blue-500 mr-2"></i>
+                                        <div class="font-semibold text-gray-900 dark:text-white">Graphiques et diagrammes</div>
+                                    </div>
+                                    <div class="text-sm text-gray-600 dark:text-gray-400">Visualisations des données</div>
+                                </div>
+                            </div>
+                        </label>
+                        
+                        <label class="checkbox-card">
+                            <div class="flex items-center">
+                                <input type="checkbox" name="include_maps" id="includeMaps" class="form-checkbox text-primary-600 mr-4 w-5 h-5">
+                                <div class="flex-1">
+                                    <div class="flex items-center mb-1">
+                                        <i class="fas fa-map text-green-500 mr-2"></i>
+                                        <div class="font-semibold text-gray-900 dark:text-white">Cartes géographiques</div>
+                                    </div>
+                                    <div class="text-sm text-gray-600 dark:text-gray-400">Distribution géographique</div>
+                                </div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- Enhanced Categories Filter -->
+                <div class="form-section">
+                    <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-6 flex items-center">
+                        <i class="fas fa-tags text-primary-600 mr-3"></i>
+                        Catégories à inclure
+                    </h3>
+                    
+                    <div class="category-list">
+                        <label class="category-item font-semibold border-b border-gray-200 dark:border-gray-700 mb-2 pb-2">
+                            <input type="checkbox" id="allCategories" class="form-checkbox text-primary-600 mr-3 w-5 h-5" checked>
+                            <i class="fas fa-check-double text-primary-600 mr-2"></i>
+                            <span class="text-gray-900 dark:text-white">Toutes les catégories</span>
+                        </label>
+                        
+                        {% for category in categories %}
+                        <label class="category-item">
+                            <input type="checkbox" name="categories" value="{{ category.id }}" class="category-checkbox form-checkbox text-primary-600 mr-3 w-4 h-4">
+                            <i class="fas fa-folder text-gray-400 mr-2"></i>
+                            <span class="text-gray-700 dark:text-gray-300">{{ category.name }}</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <!-- Enhanced Format Options -->
+                <div class="form-section">
+                    <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-6 flex items-center">
+                        <i class="fas fa-file-export text-primary-600 mr-3"></i>
+                        Format de sortie
+                    </h3>
+                    
+                    <div class="space-y-4">
+                        <label class="format-option" data-format="pdf">
+                            <input type="radio" name="format" value="pdf" class="form-radio text-primary-600 mr-4" checked>
+                            <div class="flex items-center flex-1">
+                                <div class="w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-lg flex items-center justify-center mr-4">
+                                    <i class="fas fa-file-pdf text-red-600 dark:text-red-400 text-xl"></i>
+                                </div>
+                                <div>
+                                    <div class="font-semibold text-gray-900 dark:text-white">PDF</div>
+                                    <div class="text-sm text-gray-600 dark:text-gray-400">Format idéal pour l'impression et le partage</div>
+                                </div>
+                            </div>
+                        </label>
+                        
+                        <label class="format-option" data-format="excel">
+                            <input type="radio" name="format" value="excel" class="form-radio text-primary-600 mr-4">
+                            <div class="flex items-center flex-1">
+                                <div class="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center mr-4">
+                                    <i class="fas fa-file-excel text-green-600 dark:text-green-400 text-xl"></i>
+                                </div>
+                                <div>
+                                    <div class="font-semibold text-gray-900 dark:text-white">Excel</div>
+                                    <div class="text-sm text-gray-600 dark:text-gray-400">Données structurées pour analyse approfondie</div>
+                                </div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Step 3: Enhanced Preview -->
+        <div id="stepContent3" class="step-content" style="display: none;">
+            <div class="preview-section">
+                <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-8 text-center flex items-center justify-center">
+                    <i class="fas fa-eye text-primary-600 mr-3"></i>
+                    Aperçu du rapport
+                </h2>
+                
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div class="space-y-6">
+                        <div class="bg-white/50 dark:bg-gray-800/50 rounded-2xl p-6 backdrop-blur-sm">
+                            <h3 class="font-bold text-gray-900 dark:text-white mb-4 flex items-center">
+                                <i class="fas fa-cog text-primary-600 mr-2"></i>
+                                Paramètres sélectionnés
+                            </h3>
+                            <div class="space-y-3 text-sm">
+                                <div class="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-700">
+                                    <span class="text-gray-600 dark:text-gray-400">Type de rapport:</span>
+                                    <span class="font-semibold text-gray-900 dark:text-white" id="previewReportType">Non sélectionné</span>
+                                </div>
+                                <div class="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-700">
+                                    <span class="text-gray-600 dark:text-gray-400">Période:</span>
+                                    <span class="font-semibold text-gray-900 dark:text-white" id="previewDateRange">Non définie</span>
+                                </div>
+                                <div class="flex justify-between items-center py-2">
+                                    <span class="text-gray-600 dark:text-gray-400">Format:</span>
+                                    <span class="font-semibold text-gray-900 dark:text-white" id="previewFormat">PDF</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-white/50 dark:bg-gray-800/50 rounded-2xl p-6 backdrop-blur-sm">
+                            <h3 class="font-bold text-gray-900 dark:text-white mb-4 flex items-center">
+                                <i class="fas fa-list-check text-green-600 mr-2"></i>
+                                Contenu inclus
+                            </h3>
+                            <div class="space-y-3 text-sm" id="previewContent">
+                                <!-- Content will be populated by JavaScript -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-6">
+                        <div class="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-2xl p-6 border border-blue-200 dark:border-blue-800">
+                            <div class="flex items-start">
+                                <div class="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center mr-4 flex-shrink-0">
+                                    <i class="fas fa-info-circle text-white text-xl"></i>
+                                </div>
+                                <div>
+                                    <h4 class="font-bold text-blue-900 dark:text-blue-100 mb-2">Estimation du temps de génération</h4>
+                                    <p class="text-blue-800 dark:text-blue-200 text-sm leading-relaxed">
+                                        Ce rapport devrait être généré en <span class="font-semibold" id="estimatedTime">2-3 minutes</span>. 
+                                        Vous recevrez une notification une fois terminé.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 rounded-2xl p-6 border border-green-200 dark:border-green-800">
+                            <div class="flex items-start">
+                                <div class="w-12 h-12 bg-green-600 rounded-xl flex items-center justify-center mr-4 flex-shrink-0">
+                                    <i class="fas fa-download text-white text-xl"></i>
+                                </div>
+                                <div>
+                                    <h4 class="font-bold text-green-900 dark:text-green-100 mb-2">Téléchargement automatique</h4>
+                                    <p class="text-green-800 dark:text-green-200 text-sm leading-relaxed">
+                                        Le rapport sera automatiquement téléchargé une fois la génération terminée. 
+                                        Vous pourrez également le retrouver dans votre historique.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Enhanced Navigation Buttons -->
+        <div class="nav-buttons">
+            <button type="button" id="prevBtn" class="btn-secondary flex items-center space-x-2" style="display: none;">
+                <i class="fas fa-chevron-left"></i>
+                <span>Précédent</span>
+            </button>
+            
+            <div class="flex items-center space-x-4">
+                <button type="button" id="nextBtn" class="btn-primary flex items-center space-x-2">
+                    <span>Suivant</span>
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+                
+                <button type="submit" id="generateBtn" class="btn-primary flex items-center space-x-2" style="display: none;">
+                    <i class="fas fa-magic"></i>
+                    <span>Générer le rapport</span>
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Enhanced Loading Overlay -->
+<div class="generating-overlay" id="generatingOverlay">
+    <div class="generating-content">
+        <div class="progress-ring">
+            <svg width="80" height="80">
+                <circle cx="40" cy="40" r="36" stroke="#e2e8f0" stroke-width="4" fill="none"/>
+                <circle cx="40" cy="40" r="36" stroke="#0ea5e9" stroke-width="4" fill="none" class="progress"/>
+            </svg>
+        </div>
+        <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">Génération en cours...</h3>
+        <p class="text-gray-600 dark:text-gray-400 mb-4">Veuillez patienter pendant que nous créons votre rapport personnalisé.</p>
+        <div class="text-sm text-gray-500 dark:text-gray-500">
+            <span id="progressText">Initialisation...</span>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // Pure JavaScript implementation
+    document.addEventListener('DOMContentLoaded', function() {
+        // State management
+        let currentStep = 1;
+        let selectedReportType = 'comprehensive';
+        let isGenerating = false;
+        
+        // Elements
+        const reportCards = document.querySelectorAll('.report-card');
+        const stepContents = document.querySelectorAll('[id^="stepContent"]');
+        const stepIndicators = document.querySelectorAll('[id^="indicator"]');
+        const stepConnectors = document.querySelectorAll('[id^="connector"]');
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const generateBtn = document.getElementById('generateBtn');
+        const reportForm = document.getElementById('reportForm');
+        const generatingOverlay = document.getElementById('generatingOverlay');
+        
+        // Form elements
+        const dateFromInput = document.getElementById('dateFrom');
+        const dateToInput = document.getElementById('dateTo');
+        const quickRangeBtns = document.querySelectorAll('.quick-range-btn');
+        const allCategoriesCheckbox = document.getElementById('allCategories');
+        const categoryCheckboxes = document.querySelectorAll('.category-checkbox');
+        const formatOptions = document.querySelectorAll('.format-option');
+        
+        // Initialize
+        init();
+        
+        function init() {
+            // Set default date range (last 30 days)
+            setQuickRange('month');
+            
+            // Add event listeners
+            reportCards.forEach(card => {
+                card.addEventListener('click', () => selectReportType(card));
+            });
+            
+            quickRangeBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const range = btn.dataset.range;
+                    setQuickRange(range);
+                    updateActiveQuickRange(btn);
+                });
+            });
+            
+            formatOptions.forEach(option => {
+                option.addEventListener('click', () => selectFormat(option));
+            });
+            
+            allCategoriesCheckbox.addEventListener('change', toggleAllCategories);
+            
+            categoryCheckboxes.forEach(checkbox => {
+                checkbox.addEventListener('change', updateCategorySelection);
+            });
+            
+            prevBtn.addEventListener('click', previousStep);
+            nextBtn.addEventListener('click', nextStep);
+            generateBtn.addEventListener('click', generateReport);
+            
+            // Form validation
+            dateFromInput.addEventListener('change', validateDates);
+            dateToInput.addEventListener('change', validateDates);
+            
+            // Initialize first step
+            updateStepDisplay();
+        }
+        
+        function selectReportType(card) {
+            // Remove selection from all cards
+            reportCards.forEach(c => c.classList.remove('selected'));
+            
+            // Add selection to clicked card
+            card.classList.add('selected');
+            
+            // Update selected type
+            selectedReportType = card.dataset.type;
+            
+            // Update hidden input
+            const radioInput = card.querySelector('input[type="radio"]');
+            if (radioInput) {
+                radioInput.checked = true;
+            }
+            
+            // Show success feedback
+            showToast('Type de rapport sélectionné', 'success', 2000);
+        }
+        
+        function setQuickRange(range) {
+            const today = new Date();
+            const endDate = today.toISOString().split('T')[0];
+            
+            let startDate;
+            switch (range) {
+                case 'week':
+                    startDate = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+                    break;
+                case 'month':
+                    startDate = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+                    break;
+                case 'quarter':
+                    startDate = new Date(today.getTime() - 90 * 24 * 60 * 60 * 1000);
+                    break;
+                case 'year':
+                    startDate = new Date(today.getFullYear(), 0, 1);
+                    break;
+            }
+            
+            dateFromInput.value = startDate.toISOString().split('T')[0];
+            dateToInput.value = endDate;
+            
+            // Set min date for end date
+            dateToInput.min = dateFromInput.value;
+        }
+        
+        function updateActiveQuickRange(activeBtn) {
+            quickRangeBtns.forEach(btn => btn.classList.remove('active'));
+            activeBtn.classList.add('active');
+        }
+        
+        function selectFormat(option) {
+            // Remove selection from all options
+            formatOptions.forEach(opt => opt.classList.remove('selected'));
+            
+            // Add selection to clicked option
+            option.classList.add('selected');
+            
+            // Update radio input
+            const radioInput = option.querySelector('input[type="radio"]');
+            if (radioInput) {
+                radioInput.checked = true;
+            }
+        }
+        
+        function toggleAllCategories() {
+            const isChecked = allCategoriesCheckbox.checked;
+            categoryCheckboxes.forEach(checkbox => {
+                checkbox.checked = isChecked;
+            });
+        }
+        
+        function updateCategorySelection() {
+            const checkedCategories = Array.from(categoryCheckboxes).filter(cb => cb.checked);
+            const allChecked = checkedCategories.length === categoryCheckboxes.length;
+            
+            allCategoriesCheckbox.checked = allChecked;
+            allCategoriesCheckbox.indeterminate = checkedCategories.length > 0 && !allChecked;
+        }
+        
+        function validateDates() {
+            if (dateFromInput.value && dateToInput.value) {
+                const fromDate = new Date(dateFromInput.value);
+                const toDate = new Date(dateToInput.value);
+                
+                if (fromDate > toDate) {
+                    showToast('La date de début doit être antérieure à la date de fin', 'error');
+                    dateToInput.value = '';
+                }
+            }
+            
+            // Update min date for end date
+            if (dateFromInput.value) {
+                dateToInput.min = dateFromInput.value;
+            }
+        }
+        
+        function nextStep() {
+            if (validateCurrentStep()) {
+                if (currentStep < 3) {
+                    currentStep++;
+                    updateStepDisplay();
+                    updatePreview();
+                }
+            }
+        }
+        
+        function previousStep() {
+            if (currentStep > 1) {
+                currentStep--;
+                updateStepDisplay();
+            }
+        }
+        
+        function validateCurrentStep() {
+            switch (currentStep) {
+                case 1:
+                    if (!selectedReportType) {
+                        showToast('Veuillez sélectionner un type de rapport', 'warning');
+                        return false;
+                    }
+                    break;
+                case 2:
+                    if (!dateFromInput.value || !dateToInput.value) {
+                        showToast('Veuillez sélectionner une période', 'warning');
+                        return false;
+                    }
+                    break;
+            }
+            return true;
+        }
+        
+        function updateStepDisplay() {
+            // Hide all step contents
+            stepContents.forEach(content => {
+                content.style.display = 'none';
+            });
+            
+            // Show current step content
+            const currentContent = document.getElementById(`stepContent${currentStep}`);
+            if (currentContent) {
+                currentContent.style.display = 'block';
+                currentContent.classList.add('step-content');
+            }
+            
+            // Update step indicators
+            stepIndicators.forEach((indicator, index) => {
+                const stepNum = index + 1;
+                indicator.className = 'step-indicator';
+                
+                if (stepNum < currentStep) {
+                    indicator.classList.add('completed');
+                    indicator.innerHTML = '<i class="fas fa-check"></i>';
+                } else if (stepNum === currentStep) {
+                    indicator.classList.add('active');
+                    indicator.innerHTML = getStepIcon(stepNum);
+                } else {
+                    indicator.classList.add('inactive');
+                    indicator.innerHTML = getStepIcon(stepNum);
+                }
+            });
+            
+            // Update step connectors
+            stepConnectors.forEach((connector, index) => {
+                connector.className = 'step-connector';
+                if (index + 1 < currentStep) {
+                    connector.classList.add('completed');
+                }
+            });
+            
+            // Update navigation buttons
+            prevBtn.style.display = currentStep > 1 ? 'flex' : 'none';
+            nextBtn.style.display = currentStep < 3 ? 'flex' : 'none';
+            generateBtn.style.display = currentStep === 3 ? 'flex' : 'none';
+        }
+        
+        function getStepIcon(stepNum) {
+            const icons = {
+                1: '<i class="fas fa-file-alt"></i>',
+                2: '<i class="fas fa-cog"></i>',
+                3: '<i class="fas fa-eye"></i>',
+                4: '<i class="fas fa-download"></i>'
+            };
+            return icons[stepNum] || stepNum;
+        }
+        
+        function updatePreview() {
+            if (currentStep === 3) {
+                // Update report type
+                const reportTypeNames = {
+                    'comprehensive': 'Rapport Complet',
+                    'problems': 'Rapport Problèmes',
+                    'complaints': 'Rapport Réclamations',
+                    'performance': 'Rapport Performance',
+                    'geographic': 'Rapport Géographique',
+                    'custom': 'Rapport Personnalisé'
+                };
+                document.getElementById('previewReportType').textContent = reportTypeNames[selectedReportType] || 'Non sélectionné';
+                
+                // Update date range
+                if (dateFromInput.value && dateToInput.value) {
+                    document.getElementById('previewDateRange').textContent = `Du ${dateFromInput.value} au ${dateToInput.value}`;
+                }
+                
+                // Update format
+                const selectedFormat = document.querySelector('input[name="format"]:checked');
+                if (selectedFormat) {
+                    document.getElementById('previewFormat').textContent = selectedFormat.value.toUpperCase();
+                }
+                
+                // Update content
+                updatePreviewContent();
+                
+                // Update estimated time
+                updateEstimatedTime();
+            }
+        }
+        
+        function updatePreviewContent() {
+            const contentContainer = document.getElementById('previewContent');
+            const contentItems = [];
+            
+            const checkboxes = [
+                { id: 'includeProblems', label: 'Problèmes signalés', icon: 'fas fa-exclamation-triangle' },
+                { id: 'includeComplaints', label: 'Réclamations', icon: 'fas fa-file-signature' },
+                { id: 'includeCharts', label: 'Graphiques', icon: 'fas fa-chart-pie' },
+                { id: 'includeMaps', label: 'Cartes géographiques', icon: 'fas fa-map' }
+            ];
+            
+            checkboxes.forEach(item => {
+                const checkbox = document.getElementById(item.id);
+                if (checkbox && checkbox.checked) {
+                    contentItems.push(`
+                        <div class="flex items-center py-2">
+                            <i class="fas fa-check text-green-600 mr-3"></i>
+                            <i class="${item.icon} text-gray-500 mr-2"></i>
+                            <span class="text-gray-700 dark:text-gray-300">${item.label}</span>
+                        </div>
+                    `);
+                }
+            });
+            
+            contentContainer.innerHTML = contentItems.join('');
+        }
+        
+        function updateEstimatedTime() {
+            let baseTime = 30; // seconds
+            
+            if (document.getElementById('includeCharts').checked) baseTime += 15;
+            if (document.getElementById('includeMaps').checked) baseTime += 20;
+            
+            const selectedFormat = document.querySelector('input[name="format"]:checked');
+            if (selectedFormat && selectedFormat.value === 'excel') baseTime += 10;
+            
+            let timeText;
+            if (baseTime < 60) {
+                timeText = `${baseTime} secondes`;
+            } else {
+                timeText = `${Math.ceil(baseTime / 60)} minute(s)`;
+            }
+            
+            document.getElementById('estimatedTime').textContent = timeText;
+        }
+        
+      // Replace your existing generateReport function with this one.
+function generateReport(e) {
+    e.preventDefault();
+
+    if (isGenerating) return;
+
+    isGenerating = true;
+    generatingOverlay.classList.add('active');
+    const progressText = document.getElementById('progressText');
+    const progressRing = generatingOverlay.querySelector('.progress-ring');
+    const generatingTitle = generatingOverlay.querySelector('h3');
+
+    progressText.textContent = 'Initialisation...';
+    showToast('Génération du rapport démarrée', 'info');
+
+    const formData = new FormData(reportForm);
+    let filename = "report.pdf"; // A default filename
+
+    fetch(reportForm.action, {
+        method: reportForm.method,
+        body: formData,
+        headers: {
+            'X-CSRFToken': formData.get('csrfmiddlewaretoken'),
+        },
+    })
+    .then(response => {
+        if (!response.ok) {
+            // This handles server errors like 500, but we need to see if it's a JSON error
+            // to get the specific message from your 'except' block.
+            return response.json().then(errorData => {
+                // We successfully parsed the error JSON from the server.
+                // Throw it so it can be caught by the .catch() block.
+                throw errorData; 
+            });
+        }
+
+        // --- THE KEY CHANGE IS HERE ---
+        // Check the Content-Type header to see if we got a file or a JSON message.
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.indexOf("application/json") !== -1) {
+            // This means an error occurred and the server sent a JSON response.
+            return response.json().then(data => {
+                // Throw the error to be handled by the .catch block.
+                throw new Error(data.error || 'An unknown error occurred.');
+            });
+        } else {
+            // This means we got the file successfully.
+            // Extract the filename from the Content-Disposition header.
+            const disposition = response.headers.get('Content-Disposition');
+            if (disposition && disposition.indexOf('attachment') !== -1) {
+                const filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
+                const matches = filenameRegex.exec(disposition);
+                if (matches != null && matches[1]) {
+                    filename = matches[1].replace(/['"]/g, '');
+                }
+            }
+            // Pass the file blob to the next .then()
+            return response.blob();
+        }
+    })
+    .then(blob => {
+        // This block only runs if we received a file blob successfully.
+        generatingTitle.textContent = 'Terminé !';
+        progressText.textContent = 'Téléchargement en cours... La page va se rafraîchir.';
+        progressRing.innerHTML = '<i class="fas fa-check-circle text-green-500 text-6xl"></i>';
+
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', filename); 
+        
+        document.body.appendChild(link);
+        link.click();
+        
+        window.URL.revokeObjectURL(url);
+        link.remove();
+
+        setTimeout(() => {
+            window.location.reload();
+        }, 2000);
+
+    })
+    .catch(error => {
+        console.error('Error generating report:', error);
+        generatingTitle.textContent = 'Erreur !';
+        
+        // Display the specific error message from the server if available.
+        let errorMessage = 'La génération du rapport a échoué.';
+        if (error && error.error) {
+            errorMessage = error.error; // Use the error message from your JsonResponse
+        } else if (error && error.message) {
+            errorMessage = error.message;
+        }
+
+        progressText.textContent = errorMessage;
+        progressRing.innerHTML = '<i class="fas fa-times-circle text-red-500 text-6xl"></i>';
+        showToast(errorMessage, 'error', 5000); // Show toast for 5 seconds
+        isGenerating = false; 
+    });
+}
+        // Initialize format selection
+        const defaultFormat = document.querySelector('.format-option[data-format="pdf"]');
+        if (defaultFormat) {
+            selectFormat(defaultFormat);
+        }
+        
+        // Initialize report type selection
+        const defaultReportCard = document.querySelector('.report-card[data-type="comprehensive"]');
+        if (defaultReportCard) {
+            selectReportType(defaultReportCard);
+        }
+    });
+</script>
+{% endblock %}

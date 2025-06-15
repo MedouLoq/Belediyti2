@@ -131,7 +131,7 @@ def redirect_user(request):
             # Redirect Admins/Super Admins to the Django admin index
             return redirect("superadmin:superadmin_home")
         elif request.user.user_type == "ADMIN":
-            return redirect("Muni_admin:admin_home")
+            return redirect("Muni_admin:dashboard")
     # If not authenticated or unknown type, redirect to login
     return redirect("login")
 

@@ -1,0 +1,674 @@
+{% extends 'muni_admin/base.html' %}
+{% load static %}
+{% load i18n %}
+
+{% block title %}Détail Réclamation #{{ complaint.id }} - Belediyti{% endblock %}
+{% block page_title %}Réclamation #{{ complaint.id|slice:":8" }}{% endblock %}
+{% block page_subtitle %}{{ complaint.subject }}{% endblock %}
+
+{% block extra_styles %}
+<style>
+    .status-timeline {
+        position: relative;
+    }
+    
+    .status-timeline::before {
+        content: '';
+        position: absolute;
+        left: 1rem;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background: linear-gradient(to bottom, #e5e7eb, #d1d5db);
+    }
+    
+    .timeline-item {
+        position: relative;
+        padding-left: 3rem;
+        padding-bottom: 1.5rem;
+    }
+    
+    .timeline-item::before {
+        content: '';
+        position: absolute;
+        left: 0.75rem;
+        top: 0.5rem;
+        width: 0.5rem;
+        height: 0.5rem;
+        border-radius: 50%;
+        background: #6b7280;
+        border: 2px solid white;
+        box-shadow: 0 0 0 2px #e5e7eb;
+    }
+    
+    .timeline-item.current::before {
+        background: #3b82f6;
+        box-shadow: 0 0 0 2px #dbeafe;
+    }
+    
+    .timeline-item.resolved::before {
+        background: #10b981;
+        box-shadow: 0 0 0 2px #d1fae5;
+    }
+    
+    .evidence-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+    }
+    
+    .evidence-item {
+        background-color: #f9fafb;
+        border-radius: 0.5rem;
+        padding: 1rem;
+        border: 1px solid #e5e7eb;
+        transition: all 0.2s ease;
+        cursor: pointer;
+    }
+    
+    .evidence-item:hover {
+        border-color: #93c5fd;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+    
+    .citizen-card {
+        background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+        border: 1px solid #93c5fd;
+        border-radius: 0.5rem;
+    }
+    
+    .card {
+        background: white;
+        border-radius: 0.5rem;
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+        border: 1px solid #e5e7eb;
+    }
+    
+    .status-badge {
+        border-radius: 9999px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+    
+    .status-pending {
+        background-color: #fef3c7;
+        color: #92400e;
+    }
+    
+    .status-in_progress {
+        background-color: #dbeafe;
+        color: #1e40af;
+    }
+    
+    .status-resolved {
+        background-color: #d1fae5;
+        color: #065f46;
+    }
+    
+    .status-rejected {
+        background-color: #fee2e2;
+        color: #991b1b;
+    }
+    
+    .btn-primary {
+        background-color: #3b82f6;
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 0.375rem;
+        border: none;
+        cursor: pointer;
+        font-weight: 500;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: background-color 0.2s ease;
+    }
+    
+    .btn-primary:hover {
+        background-color: #2563eb;
+    }
+    
+    .btn-secondary {
+        background-color: #f3f4f6;
+        color: #374151;
+        padding: 0.5rem 1rem;
+        border-radius: 0.375rem;
+        border: 1px solid #d1d5db;
+        cursor: pointer;
+        font-weight: 500;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s ease;
+    }
+    
+    .btn-secondary:hover {
+        background-color: #e5e7eb;
+        border-color: #9ca3af;
+    }
+    
+    .form-input {
+        width: 100%;
+        padding: 0.5rem 0.75rem;
+        border: 1px solid #d1d5db;
+        border-radius: 0.375rem;
+        font-size: 0.875rem;
+        line-height: 1.25rem;
+    }
+    
+    .form-input:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+    
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 50;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+    }
+    
+    .modal-container {
+        background: white;
+        border-radius: 0.5rem;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        max-width: 56rem;
+        width: 100%;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+    
+    .prose {
+        line-height: 1.625;
+    }
+    
+    .grid {
+        display: grid;
+    }
+    
+    .grid-cols-1 {
+        grid-template-columns: repeat(1, minmax(0, 1fr));
+    }
+    
+    .grid-cols-2 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    
+    .gap-4 {
+        gap: 1rem;
+    }
+    
+    .gap-8 {
+        gap: 2rem;
+    }
+    
+    .space-y-3 > * + * {
+        margin-top: 0.75rem;
+    }
+    
+    .space-y-4 > * + * {
+        margin-top: 1rem;
+    }
+    
+    .space-y-6 > * + * {
+        margin-top: 1.5rem;
+    }
+    
+    .space-y-8 > * + * {
+        margin-top: 2rem;
+    }
+    
+    .space-x-2 > * + * {
+        margin-left: 0.5rem;
+    }
+    
+    .space-x-3 > * + * {
+        margin-left: 0.75rem;
+    }
+    
+    .space-x-4 > * + * {
+        margin-left: 1rem;
+    }
+    
+    @media (min-width: 1024px) {
+        .lg\\:grid-cols-3 {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+        
+        .lg\\:col-span-2 {
+            grid-column: span 2 / span 2;
+        }
+    }
+    
+    /* Dark mode styles */
+    @media (prefers-color-scheme: dark) {
+        .card {
+            background-color: #1f2937;
+            border-color: #374151;
+        }
+        
+        .evidence-item {
+            background-color: #374151;
+            border-color: #4b5563;
+        }
+        
+        .citizen-card {
+            background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
+            border-color: #3b82f6;
+        }
+        
+        .modal-container {
+            background-color: #1f2937;
+        }
+        
+        .form-input {
+            background-color: #374151;
+            border-color: #4b5563;
+            color: white;
+        }
+        
+        .btn-secondary {
+            background-color: #374151;
+            color: #e5e7eb;
+            border-color: #4b5563;
+        }
+        
+        .btn-secondary:hover {
+            background-color: #4b5563;
+        }
+    }
+    
+    .text-secondary-900 { color: #111827; }
+    .text-secondary-700 { color: #374151; }
+    .text-secondary-600 { color: #4b5563; }
+    .text-secondary-500 { color: #6b7280; }
+    .text-secondary-400 { color: #9ca3af; }
+    .text-secondary-300 { color: #d1d5db; }
+    .text-primary-600 { color: #2563eb; }
+    .text-white { color: white; }
+    
+    .w-full { width: 100%; }
+    .w-16 { width: 4rem; }
+    .h-16 { height: 4rem; }
+    .h-32 { height: 8rem; }
+    .rounded { border-radius: 0.25rem; }
+    .rounded-lg { border-radius: 0.5rem; }
+    .rounded-full { border-radius: 9999px; }
+    .object-cover { object-fit: cover; }
+    .flex { display: flex; }
+    .items-center { align-items: center; }
+    .justify-between { justify-content: space-between; }
+    .justify-center { justify-content: center; }
+    .text-center { text-align: center; }
+    .text-right { text-align: right; }
+    .text-sm { font-size: 0.875rem; }
+    .text-lg { font-size: 1.125rem; }
+    .text-xl { font-size: 1.25rem; }
+    .text-4xl { font-size: 2.25rem; }
+    .font-medium { font-weight: 500; }
+    .font-semibold { font-weight: 600; }
+    .font-bold { font-weight: 700; }
+    .p-4 { padding: 1rem; }
+    .p-6 { padding: 1.5rem; }
+    .px-4 { padding-left: 1rem; padding-right: 1rem; }
+    .py-2 { padding-top: 0.5rem; padding-bottom: 0.5rem; }
+    .mb-1 { margin-bottom: 0.25rem; }
+    .mb-2 { margin-bottom: 0.5rem; }
+    .mb-3 { margin-bottom: 0.75rem; }
+    .mb-4 { margin-bottom: 1rem; }
+    .mb-6 { margin-bottom: 1.5rem; }
+    .mr-2 { margin-right: 0.5rem; }
+    .mt-1 { margin-top: 0.25rem; }
+    .mt-4 { margin-top: 1rem; }
+    .pt-4 { padding-top: 1rem; }
+    .border-t { border-top-width: 1px; }
+    .border { border-width: 1px; }
+    .max-w-none { max-width: none; }
+    .max-w-full { max-width: 100%; }
+    .max-h-96 { max-height: 24rem; }
+    .max-h-90vh { max-height: 90vh; }
+    .mx-auto { margin-left: auto; margin-right: auto; }
+    .block { display: block; }
+    .aspect-w-16 { position: relative; }
+    .aspect-h-9::before { content: ""; display: block; padding-bottom: 56.25%; }
+    .aspect-h-9 > * { position: absolute; height: 100%; width: 100%; top: 0; right: 0; bottom: 0; left: 0; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+    <!-- Header Actions -->
+    <div class="flex items-center justify-between">
+        <div class="flex items-center space-x-4">
+            <a href="{% url 'Muni_admin:complaints' %}" class="btn-secondary flex items-center space-x-2">
+                <i class="fas fa-arrow-left"></i>
+                <span>Retour à la liste</span>
+            </a>
+            <span class="status-badge status-{{ complaint.status|lower }} text-lg px-4 py-2">
+                {{ complaint.get_status_display }}
+            </span>
+        </div>
+        
+        <div class="flex items-center space-x-3">
+            <button onclick="printComplaint()" class="btn-secondary flex items-center space-x-2">
+                <i class="fas fa-print"></i>
+                <span>Imprimer</span>
+            </button>
+            <button onclick="exportComplaint()" class="btn-secondary flex items-center space-x-2">
+                <i class="fas fa-download"></i>
+                <span>Exporter</span>
+            </button>
+        </div>
+    </div>
+    
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- Main Content -->
+        <div class="lg:col-span-2 space-y-6">
+            <!-- Complaint Details -->
+            <div class="card p-6">
+                <h2 class="text-xl font-bold text-secondary-900 mb-6">Détails de la réclamation</h2>
+                
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-secondary-700 mb-1">Sujet</label>
+                        <p class="text-secondary-900 font-medium">{{ complaint.subject }}</p>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-secondary-700 mb-1">Description</label>
+                        <div class="prose max-w-none text-secondary-900">
+                            {{ complaint.description|linebreaks }}
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-secondary-700 mb-1">Date de soumission</label>
+                            <p class="text-secondary-900">{{ complaint.created_at|date:"d/m/Y à H:i" }}</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-secondary-700 mb-1">Dernière mise à jour</label>
+                            <p class="text-secondary-900">{{ complaint.updated_at|date:"d/m/Y à H:i" }}</p>
+                        </div>
+                    </div>
+                    
+                    {% if complaint.comment %}
+                    <div>
+                        <label class="block text-sm font-medium text-secondary-700 mb-1">Commentaire administratif</label>
+                        <div class="evidence-item">
+                            <p class="text-secondary-900">{{ complaint.comment|linebreaks }}</p>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Evidence/Attachments -->
+            {% if complaint.photo or complaint.video or complaint.voice_record or complaint.evidence %}
+            <div class="card p-6">
+                <h2 class="text-xl font-bold text-secondary-900 mb-6">Pièces justificatives</h2>
+                
+                <div class="evidence-grid">
+                    {% if complaint.photo %}
+                    <div class="evidence-item" onclick="openMediaModal('{{ complaint.photo.url }}', 'image')">
+                        <div class="aspect-w-16 aspect-h-9 mb-3">
+                            <img src="{{ complaint.photo.url }}" alt="Photo" class="w-full h-32 object-cover rounded">
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <i class="fas fa-image text-primary-600"></i>
+                            <span class="text-sm font-medium text-secondary-900">Photo</span>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if complaint.video %}
+                    <div class="evidence-item" onclick="openMediaModal('{{ complaint.video.url }}', 'video')">
+                        <div class="aspect-w-16 aspect-h-9 mb-3 evidence-item rounded flex items-center justify-center">
+                            <i class="fas fa-play text-4xl text-secondary-400"></i>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <i class="fas fa-video text-primary-600"></i>
+                            <span class="text-sm font-medium text-secondary-900">Vidéo</span>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if complaint.voice_record %}
+                    <div class="evidence-item" onclick="openMediaModal('{{ complaint.voice_record.url }}', 'audio')">
+                        <div class="aspect-w-16 aspect-h-9 mb-3 evidence-item rounded flex items-center justify-center">
+                            <i class="fas fa-microphone text-4xl text-secondary-400"></i>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <i class="fas fa-microphone text-primary-600"></i>
+                            <span class="text-sm font-medium text-secondary-900">Enregistrement vocal</span>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if complaint.evidence %}
+                    <div class="evidence-item" onclick="window.open('{{ complaint.evidence.url }}', '_blank')">
+                        <div class="aspect-w-16 aspect-h-9 mb-3 evidence-item rounded flex items-center justify-center">
+                            <i class="fas fa-file text-4xl text-secondary-400"></i>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <i class="fas fa-file text-primary-600"></i>
+                            <span class="text-sm font-medium text-secondary-900">Document</span>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- Status History -->
+            <div class="card p-6">
+                <h2 class="text-xl font-bold text-secondary-900 mb-6">Historique des statuts</h2>
+                
+                <div class="status-timeline">
+                    {% for log in status_logs %}
+                    <div class="timeline-item {% if log.new_status == complaint.status %}current{% elif log.new_status == 'RESOLVED' %}resolved{% endif %}">
+                        <div class="flex items-start justify-between">
+                            <div>
+                                <h4 class="font-medium text-secondary-900">
+                                    {{ log.get_new_status_display }}
+                                </h4>
+                                <p class="text-sm text-secondary-600">
+                                    Par {{ log.changed_by.get_full_name|default:log.changed_by.username }}
+                                </p>
+                                {% if log.comment %}
+                                <p class="text-sm text-secondary-700 mt-1">{{ log.comment }}</p>
+                                {% endif %}
+                            </div>
+                            <span class="text-sm text-secondary-500">
+                                {{ log.changed_at|date:"d/m/Y H:i" }}
+                            </span>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <p class="text-secondary-600">Aucun historique de statut disponible.</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Sidebar -->
+        <div class="space-y-6">
+            <!-- Citizen Information -->
+            <div class="card citizen-card p-6">
+                <h3 class="text-lg font-bold text-secondary-900 mb-4">Informations du citoyen</h3>
+                
+                <div class="flex items-center space-x-4 mb-4">
+                    {% if complaint.citizen.profile_picture %}
+                        <img src="{{ complaint.citizen.profile_picture.url }}" alt="Photo" class="w-16 h-16 rounded-full object-cover">
+                    {% else %}
+                        <div class="w-16 h-16 evidence-item rounded-full flex items-center justify-center">
+                            <i class="fas fa-user text-secondary-400 text-xl"></i>
+                        </div>
+                    {% endif %}
+                    <div>
+                        <h4 class="font-semibold text-secondary-900">{{ complaint.citizen.full_name }}</h4>
+                        <p class="text-sm text-secondary-600">{{ complaint.citizen.user.phone_number }}</p>
+                    </div>
+                </div>
+                
+                <div class="space-y-3 text-sm">
+                    <div class="flex justify-between">
+                        <span class="text-secondary-600">NNI:</span>
+                        <span class="font-medium text-secondary-900">{{ complaint.citizen.nni }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-secondary-600">Adresse:</span>
+                        <span class="font-medium text-secondary-900 text-right">{{ complaint.citizen.address|default:"Non renseignée" }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-secondary-600">Membre depuis:</span>
+                        <span class="font-medium text-secondary-900">{{ complaint.citizen.user.date_joined|date:"m/Y" }}</span>
+                    </div>
+                </div>
+                
+                <div class="mt-4 pt-4 border-t border">
+                    <a href="{% url 'Muni_admin:citizen_detail' complaint.citizen.id %}" class="btn-primary w-full text-center">
+                        <i class="fas fa-user mr-2"></i>Voir le profil complet
+                    </a>
+                </div>
+            </div>
+            
+            <!-- Status Update Form -->
+            <div class="card p-6">
+                <h3 class="text-lg font-bold text-secondary-900 mb-4">Mettre à jour le statut</h3>
+                
+                <form method="post" class="space-y-4">
+                    {% csrf_token %}
+                    <div>
+                        <label class="block text-sm font-medium text-secondary-700 mb-2">Nouveau statut</label>
+                        <select name="status" class="form-input" required>
+                            {% for value, label in status_choices %}
+                                <option value="{{ value }}" {% if value == complaint.status %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-secondary-700 mb-2">Commentaire (optionnel)</label>
+                        <textarea name="comment" rows="3" class="form-input" placeholder="Ajoutez un commentaire sur cette mise à jour..."></textarea>
+                    </div>
+                    
+                    <button type="submit" class="btn-primary w-full">
+                        <i class="fas fa-save mr-2"></i>Mettre à jour
+                    </button>
+                </form>
+            </div>
+            
+            <!-- Quick Actions -->
+            <div class="card p-6">
+                <h3 class="text-lg font-bold text-secondary-900 mb-4">Actions rapides</h3>
+                
+                <div class="space-y-3">
+                    <button onclick="sendNotification()" class="btn-secondary w-full flex items-center justify-center space-x-2">
+                        <i class="fas fa-bell"></i>
+                        <span>Envoyer une notification</span>
+                    </button>
+                    
+                    <button onclick="scheduleFollowUp()" class="btn-secondary w-full flex items-center justify-center space-x-2">
+                        <i class="fas fa-calendar-plus"></i>
+                        <span>Programmer un suivi</span>
+                    </button>
+                    
+                    <button onclick="escalateComplaint()" class="btn-secondary w-full flex items-center justify-center space-x-2">
+                        <i class="fas fa-arrow-up"></i>
+                        <span>Escalader</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Media Modal -->
+<div id="mediaModal" class="modal-overlay" style="display: none;" onclick="closeMediaModal()">
+    <div class="modal-container" onclick="event.stopPropagation()">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold text-secondary-900">Aperçu du média</h3>
+            <button onclick="closeMediaModal()" class="text-secondary-400">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+        <div class="text-center" id="mediaContent">
+            <!-- Media content will be inserted here -->
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let mediaModal = null;
+let mediaContent = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+    mediaModal = document.getElementById('mediaModal');
+    mediaContent = document.getElementById('mediaContent');
+});
+
+function openMediaModal(url, type) {
+    let content = '';
+    
+    if (type === 'image') {
+        content = `<img src="${url}" alt="Image" class="max-w-full max-h-96 mx-auto rounded-lg">`;
+    } else if (type === 'video') {
+        content = `<video src="${url}" controls class="max-w-full max-h-96 mx-auto rounded-lg"></video>`;
+    } else if (type === 'audio') {
+        content = `<audio src="${url}" controls class="w-full"></audio>`;
+    }
+    
+    mediaContent.innerHTML = content;
+    mediaModal.style.display = 'flex';
+}
+
+function closeMediaModal() {
+    mediaModal.style.display = 'none';
+    mediaContent.innerHTML = '';
+}
+
+function printComplaint() {
+    window.print();
+}
+
+function exportComplaint() {
+    // Show a simple alert instead of toast for now
+    alert('Export en cours...');
+    // Implement export functionality here
+}
+
+function sendNotification() {
+    alert('Fonctionnalité de notification à implémenter');
+}
+
+function scheduleFollowUp() {
+    alert('Fonctionnalité de suivi à implémenter');
+}
+
+function escalateComplaint() {
+    alert('Fonctionnalité d\'escalade à implémenter');
+}
+
+// Close modal when pressing Escape key
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape' && mediaModal && mediaModal.style.display === 'flex') {
+        closeMediaModal();
+    }
+});
+</script>
+{% endblock %}

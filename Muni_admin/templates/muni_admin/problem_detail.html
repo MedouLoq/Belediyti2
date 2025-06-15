@@ -3,250 +3,1106 @@
 {% load i18n %}
 
 {% block title %}{% trans "Détail du Problème" %} - {{ problem.id|stringformat:"s"|slice:":8" }}{% endblock %}
-{% block header_title %}{% trans "Détail du Problème" %}{% endblock %}
+{% block page_title %}{% trans "Détail du Problème" %}{% endblock %}
+{% block page_subtitle %}{{ problem.description|truncatechars:60 }}{% endblock %}
 
 {% block extra_styles %}
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
 <style>
+    /* Enhanced Map Styling */
     #problem-map {
-        height: 350px;
-        border-radius: 0.5rem; /* rounded-lg */
-        z-index: 0; /* Ensure map is interactive */
-        background-color: #f3f4f6; /* gray-100 - Placeholder background */
-        border: 1px solid #e5e7eb; /* gray-200 */
+        height: 400px;
+        border-radius: 1rem;
+        z-index: 0;
+        background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+        border: 3px solid #e5e7eb;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease;
+        overflow: hidden;
+        position: relative;
     }
+    
+    #problem-map::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(45deg, rgba(59, 130, 246, 0.1), rgba(139, 92, 246, 0.1));
+        opacity: 0;
+        transition: opacity 0.3s ease;
+        pointer-events: none;
+        z-index: 1;
+    }
+    
+    #problem-map:hover::before {
+        opacity: 1;
+    }
+    
+    #problem-map:hover {
+        border-color: #3b82f6;
+        box-shadow: 0 10px 25px -3px rgba(59, 130, 246, 0.2);
+    }
+    
     .leaflet-container {
-        background: #f3f4f6; /* Match placeholder */
+        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+        border-radius: 0.875rem;
     }
+    
     .map-error-message {
         display: flex;
+        flex-direction: column;
         align-items: center;
         justify-content: center;
         height: 100%;
         text-align: center;
-        padding: 1rem;
-        color: #6b7280; /* gray-500 */
-        font-size: 0.875rem; /* text-sm */
+        padding: 2rem;
+        color: #6b7280;
+        font-size: 1rem;
+        background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+        border-radius: 0.875rem;
     }
+    
+    .map-error-message i {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        color: #9ca3af;
+    }
+    
+    /* Enhanced Card Animations */
     .detail-card {
-        transition: all 0.3s ease;
-        animation: fadeInUp 0.5s ease-out forwards;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        animation: fadeInUp 0.6s ease-out forwards;
+        background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
+        border: 2px solid #e5e7eb;
+        border-radius: 1.5rem;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        position: relative;
+        overflow: hidden;
     }
+    
+    .detail-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, #3b82f6, #8b5cf6, #06b6d4);
+        transform: scaleX(0);
+        transition: transform 0.3s ease;
+    }
+    
+    .detail-card:hover::before {
+        transform: scaleX(1);
+    }
+    
+    .detail-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.15);
+        border-color: #3b82f6;
+    }
+    
     @keyframes fadeInUp {
-        from { opacity: 0; transform: translateY(20px); }
-        to { opacity: 1; transform: translateY(0); }
+        from { 
+            opacity: 0; 
+            transform: translateY(30px); 
+        }
+        to { 
+            opacity: 1; 
+            transform: translateY(0); 
+        }
     }
+    
+    /* Enhanced Status Badges */
     .status-badge {
-        padding: 0.25rem 0.6rem;
-        border-radius: 9999px; /* pill shape */
-        font-size: 0.875rem; /* text-sm */
-        font-weight: 600; /* font-semibold */
+        padding: 0.75rem 1.5rem;
+        border-radius: 9999px;
+        font-size: 1rem;
+        font-weight: 700;
         display: inline-flex;
         align-items: center;
         line-height: 1;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        border: 3px solid;
+        position: relative;
+        overflow: hidden;
+        transition: all 0.3s ease;
     }
-    .status-PENDING { background-color: #fef3c7; color: #92400e; } /* yellow-100, yellow-800 */
-    .status-IN_PROGRESS { background-color: #dbeafe; color: #1e40af; } /* blue-100, blue-800 */
-    .status-DELEGATED { background-color: #ede9fe; color: #5b21b6; } /* purple-100, purple-800 */
-    .status-RESOLVED { background-color: #d1fae5; color: #065f46; } /* green-100, green-800 */
-    .status-REJECTED { background-color: #fee2e2; color: #991b1b; } /* red-100, red-800 */
-    .status-default { background-color: #f3f4f6; color: #374151; } /* gray-100, gray-700 */
+    
+    .status-badge::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+        transition: left 0.5s;
+    }
+    
+    .status-badge:hover::before {
+        left: 100%;
+    }
+    
+    .status-pending { 
+        background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); 
+        color: #92400e; 
+        border-color: #f59e0b;
+        box-shadow: 0 4px 14px rgba(245, 158, 11, 0.3);
+    }
+    .status-in_progress { 
+        background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); 
+        color: #1e40af; 
+        border-color: #3b82f6;
+        box-shadow: 0 4px 14px rgba(59, 130, 246, 0.3);
+    }
+    .status-delegated { 
+        background: linear-gradient(135deg, #ede9fe 0%, #ddd6fe 100%); 
+        color: #5b21b6; 
+        border-color: #8b5cf6;
+        box-shadow: 0 4px 14px rgba(139, 92, 246, 0.3);
+    }
+    .status-resolved { 
+        background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); 
+        color: #065f46; 
+        border-color: #10b981;
+        box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3);
+    }
+    .status-rejected { 
+        background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); 
+        color: #991b1b; 
+        border-color: #ef4444;
+        box-shadow: 0 4px 14px rgba(239, 68, 68, 0.3);
+    }
+    .status-default { 
+        background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%); 
+        color: #374151; 
+        border-color: #9ca3af;
+        box-shadow: 0 4px 14px rgba(156, 163, 175, 0.3);
+    }
 
+    /* Enhanced Timeline */
     .timeline {
         position: relative;
-        padding-left: 2rem;
-        border-left: 2px solid #e5e7eb; /* gray-200 */
+        padding-left: 3rem;
+        border-left: 4px solid #e5e7eb;
+        background: linear-gradient(to bottom, rgba(59, 130, 246, 0.05), transparent);
+        border-radius: 0 1rem 1rem 0;
+        padding-top: 1rem;
+        padding-bottom: 1rem;
     }
+    
     .timeline-item {
         position: relative;
-        margin-bottom: 1.5rem; /* mb-6 */
+        margin-bottom: 2rem;
+        background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+        border-radius: 1rem;
+        padding: 1.5rem;
+        border: 2px solid #f1f5f9;
+        transition: all 0.3s ease;
     }
+    
+    .timeline-item:hover {
+        border-color: #3b82f6;
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);
+        transform: translateX(4px);
+    }
+    
     .timeline-item:last-child {
         margin-bottom: 0;
     }
+    
     .timeline-marker {
         position: absolute;
-        left: -0.5rem; /* Adjust based on marker size */
-        top: 0.25rem; /* Adjust vertical alignment */
-        width: 1rem;
-        height: 1rem;
+        left: -3.25rem;
+        top: 2rem;
+        width: 1.5rem;
+        height: 1.5rem;
         border-radius: 50%;
-        background-color: #9ca3af; /* gray-400 */
-        border: 2px solid white;
+        background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+        border: 4px solid #ffffff;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease;
     }
+    
     .timeline-item:first-child .timeline-marker {
-        background-color: #3b82f6; /* blue-500 */
+        background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+        box-shadow: 0 4px 14px rgba(59, 130, 246, 0.4);
+        animation: pulse 2s infinite;
     }
-    .photo-placeholder {
+    
+    .timeline-item:hover .timeline-marker {
+        transform: scale(1.2);
+        box-shadow: 0 4px 16px rgba(59, 130, 246, 0.3);
+    }
+    
+    /* Enhanced Evidence Grid */
+    .evidence-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 1.5rem;
+        padding: 1rem 0;
+    }
+    
+    .evidence-item {
+        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+        border-radius: 1.5rem;
+        padding: 1.5rem;
+        border: 3px solid #e5e7eb;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        cursor: pointer;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .evidence-item::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, #3b82f6, #8b5cf6, #06b6d4);
+        transform: scaleX(0);
+        transition: transform 0.3s ease;
+    }
+    
+    .evidence-item:hover::before {
+        transform: scaleX(1);
+    }
+    
+    .evidence-item:hover {
+        border-color: #3b82f6;
+        transform: translateY(-8px) scale(1.02);
+        box-shadow: 0 20px 40px -10px rgba(59, 130, 246, 0.2);
+    }
+    
+    .evidence-item img, .evidence-item video, .evidence-item audio {
+        max-width: 100%;
+        height: auto;
+        border-radius: 1rem;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease;
+    }
+    
+    .evidence-item:hover img,
+    .evidence-item:hover video {
+        transform: scale(1.05);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    }
+    
+    .evidence-item .icon-placeholder {
+        height: 140px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #e5e7eb 0%, #d1d5db 100%);
+        border-radius: 1rem;
+        margin-bottom: 1rem;
+        transition: all 0.3s ease;
+    }
+    
+    .evidence-item:hover .icon-placeholder {
+        background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+        transform: scale(1.05);
+    }
+    
+    .evidence-item .icon-placeholder i {
+        font-size: 3rem;
+        color: #6b7280;
+        margin-bottom: 0.5rem;
+        transition: all 0.3s ease;
+    }
+    
+    .evidence-item:hover .icon-placeholder i {
+        color: #3b82f6;
+        transform: scale(1.1);
+    }
+    
+    /* Enhanced Buttons */
+    .btn-primary {
+        background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+        border: 3px solid #1e40af;
+        color: white;
+        padding: 1rem 2rem;
+        border-radius: 1rem;
+        font-weight: 700;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        overflow: hidden;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+    
+    .btn-primary::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+        transition: left 0.5s;
+    }
+    
+    .btn-primary:hover::before {
+        left: 100%;
+    }
+    
+    .btn-primary:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 25px rgba(59, 130, 246, 0.4);
+    }
+    
+    .btn-secondary {
+        background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+        border: 3px solid #d1d5db;
+        color: #374151;
+        padding: 0.875rem 1.75rem;
+        border-radius: 1rem;
+        font-weight: 600;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .btn-secondary::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+        transition: left 0.5s;
+    }
+    
+    .btn-secondary:hover::before {
+        left: 100%;
+    }
+    
+    .btn-secondary:hover {
+        background: linear-gradient(135deg, #e5e7eb 0%, #d1d5db 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+        border-color: #9ca3af;
+    }
+    
+    /* Enhanced Form Inputs */
+    .form-input {
+        border: 3px solid #e5e7eb;
+        border-radius: 1rem;
+        padding: 1rem 1.25rem;
+        transition: all 0.3s ease;
+        background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
+        font-size: 1rem;
+    }
+    
+    .form-input:focus {
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+        background: white;
+        transform: translateY(-2px);
+    }
+    
+    /* Enhanced Cards */
+    .card {
+        background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
+        border: 2px solid #e5e7eb;
+        border-radius: 1.5rem;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, #3b82f6, #8b5cf6, #06b6d4);
+        transform: scaleX(0);
+        transition: transform 0.3s ease;
+    }
+    
+    .card:hover::before {
+        transform: scaleX(1);
+    }
+    
+    .card:hover {
+        box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.1);
+        transform: translateY(-2px);
+        border-color: #3b82f6;
+    }
+    
+    /* Enhanced Modal */
+    .modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.8);
+        backdrop-filter: blur(8px);
+        z-index: 50;
+        display: none;
+    }
+    
+    .modal-overlay.show {
         display: flex;
         align-items: center;
         justify-content: center;
-        height: 150px; /* Adjust height as needed */
-        background-color: #f9fafb; /* gray-50 */
-        border: 1px dashed #d1d5db; /* gray-300 */
-        border-radius: 0.5rem; /* rounded-lg */
-        color: #6b7280; /* gray-500 */
-        font-style: italic;
+    }
+    
+    .modal-container {
+        background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
+        border-radius: 2rem;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        border: 3px solid #e5e7eb;
+        max-width: 90vw;
+        max-height: 90vh;
+        overflow: auto;
+        position: relative;
+    }
+    
+    .modal-container::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, #3b82f6, #8b5cf6, #06b6d4);
+        border-radius: 2rem 2rem 0 0;
+    }
+    
+    /* Enhanced Detail Grid */
+    .detail-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 2rem;
+        margin-top: 2rem;
+    }
+    
+    .detail-item {
+        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+        border-radius: 1rem;
+        padding: 1.5rem;
+        border: 2px solid #e5e7eb;
+        transition: all 0.3s ease;
+    }
+    
+    .detail-item:hover {
+        border-color: #3b82f6;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);
+    }
+    
+    .detail-label {
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 0.5rem;
+        font-size: 0.875rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+    
+    .detail-value {
+        font-weight: 500;
+        color: #1f2937;
+        font-size: 1rem;
+    }
+    
+    /* Header Enhancement */
+    .page-header {
+        background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+        border-radius: 1.5rem;
+        padding: 2rem;
+        border: 2px solid #e5e7eb;
+        margin-bottom: 2rem;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+    
+    .page-title {
+        background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        font-size: 2rem;
+        font-weight: 800;
+        margin-bottom: 0.5rem;
+    }
+    
+    /* Print Styles */
+    @media print {
+        .btn-secondary, .btn-primary {
+            display: none !important;
+        }
+        
+        .page-header {
+            background: white !important;
+            border: 1px solid #000 !important;
+        }
+        
+        .detail-card {
+            background: white !important;
+            border: 1px solid #000 !important;
+            box-shadow: none !important;
+            page-break-inside: avoid;
+        }
+        
+        .timeline-item {
+            background: white !important;
+            border: 1px solid #ccc !important;
+        }
+        
+        #problem-map {
+            border: 1px solid #000 !important;
+            background: white !important;
+        }
+    }
+    
+    /* Audio Player Enhancement */
+    .audio-player {
+        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+        border-radius: 1rem;
+        padding: 1.5rem;
+        border: 2px solid #e5e7eb;
+        text-align: center;
+    }
+    
+    .audio-player audio {
+        width: 100%;
+        margin-top: 1rem;
+    }
+    
+    .audio-controls {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+    
+    .audio-controls button {
+        background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 3rem;
+        height: 3rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    
+    .audio-controls button:hover {
+        transform: scale(1.1);
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    }
+    
+    /* Responsive Improvements */
+    @media (max-width: 768px) {
+        .detail-card {
+            margin: 0 0.5rem;
+        }
+        
+        .evidence-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .timeline {
+            padding-left: 2rem;
+        }
+        
+        .timeline-marker {
+            left: -2.25rem;
+        }
+        
+        #problem-map {
+            height: 300px;
+        }
+        
+        .page-header {
+            padding: 1rem;
+        }
+        
+        .page-title {
+            font-size: 1.5rem;
+        }
     }
 </style>
 {% endblock %}
 
 {% block content %}
-    <div class="container mx-auto px-4 py-6">
-        <div class="mb-6">
-            <a href="{% url 'Muni_admin:problems' %}" class="text-primary-600 hover:text-primary-800 transition duration-150 ease-in-out">
-                <i class="fas fa-arrow-left mr-2"></i>{% trans "Retour à la liste" %}
-            </a>
-        </div>
-
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <!-- Left Column: Details & Map -->
-            <div class="lg:col-span-2 space-y-6">
-                <!-- Problem Details Card -->
-                <div class="bg-white shadow rounded-lg p-6 detail-card">
-                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
-                        <h2 class="text-xl font-semibold text-secondary-800 mb-2 sm:mb-0">{% trans "Problème" %} #{{ problem.id|stringformat:"s"|slice:":8" }}</h2>
-                        <span class="status-badge status-{{ problem.status|default:'default' }}">
-                            {{ problem.get_status_display }}
-                        </span>
-                    </div>
-
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 text-sm">
-                        <div>
-                            <p class="text-secondary-500 font-medium">{% trans "Description" %}</p>
-                            <p class="text-secondary-900">{{ problem.description }}</p>
-                        </div>
-                        <div>
-                            <p class="text-secondary-500 font-medium">{% trans "Catégorie" %}</p>
-                            <p class="text-secondary-900">{{ problem.category.name|default:"N/A" }}</p>
-                        </div>
-                        <div>
-                            <p class="text-secondary-500 font-medium">{% trans "Adresse signalée" %}</p>
-                            <p class="text-secondary-900">{{ problem.location|default:"N/A" }}</p>
-                        </div>
-                        <div>
-                            <p class="text-secondary-500 font-medium">{% trans "Municipalité" %}</p>
-                            <p class="text-secondary-900">{{ problem.municipality.name }}</p>
-                        </div>
-                        <div>
-                            <p class="text-secondary-500 font-medium">{% trans "Signalé par" %}</p>
-                            <p class="text-secondary-900">{{ problem.citizen.full_name }} ({{ problem.citizen.user.phone_number }})</p>
-                        </div>
-                        <div>
-                            <p class="text-secondary-500 font-medium">{% trans "Signalé le" %}</p>
-                            <p class="text-secondary-900">{{ problem.created_at|date:"d/m/Y H:i" }}</p>
-                        </div>
-                        <div>
-                            <p class="text-secondary-500 font-medium">{% trans "Dernière mise à jour" %}</p>
-                            <p class="text-secondary-900">{{ problem.updated_at|date:"d/m/Y H:i" }}</p>
-                        </div>
-                        <div>
-                            <p class="text-secondary-500 font-medium">{% trans "Coordonnées" %}</p>
-                            <p class="text-secondary-900">Lat: {{ problem.latitude|default:"N/A" }}, Lon: {{ problem.longitude|default:"N/A" }}</p>
-                        </div>
-                    </div>
-
-                    <!-- Photo Section -->
-                    <div class="mt-6">
-                        <p class="text-secondary-500 font-medium mb-2">{% trans "Photo" %}</p>
-                        {% if problem.photo %}
-                            <a href="{{ problem.photo.url }}" target="_blank" title="{% trans 'Voir l\'image en taille réelle' %}">
-                                <img src="{{ problem.photo.url }}" alt="{% trans 'Photo du problème' %}" 
-                                     class="max-w-full h-auto rounded-lg shadow border border-gray-200 hover:opacity-90 transition-opacity cursor-pointer">
-                            </a>
-                        {% else %}
-                            <div class="photo-placeholder">
-                                {% trans "Aucune photo associée à ce problème." %}
-                            </div>
-                        {% endif %}
-                    </div>
-                </div>
-
-                <!-- Map Card -->
-                <div class="bg-white shadow rounded-lg p-6 detail-card" style="animation-delay: 0.1s;">
-                    <h3 class="text-lg font-semibold text-secondary-800 mb-4">{% trans "Localisation" %}</h3>
-                    <div id="problem-map"></div>
+<div class="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-6" x-data="problemDetail()">
+    <!-- Enhanced Header -->
+    <div class="page-header">
+        <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                <a href="{% url 'Muni_admin:problems' %}" class="btn-secondary flex items-center space-x-2">
+                    <i class="fas fa-arrow-left"></i>
+                    <span>{% trans "Retour à la liste" %}</span>
+                </a>
+                <div>
+                    <h1 class="page-title">{% trans "Problème" %} #{{ problem.id|stringformat:"s"|slice:":8" }}</h1>
+                    <span class="status-badge status-{{ problem.status|default:'default'|lower }}">
+                        <i class="fas fa-circle mr-2"></i>
+                        {{ problem.get_status_display }}
+                    </span>
                 </div>
             </div>
-
-            <!-- Right Column: Status Update & History -->
-            <div class="lg:col-span-1 space-y-6">
-                <!-- Status Update Card -->
-                <div class="bg-white shadow rounded-lg p-6 detail-card" style="animation-delay: 0.2s;">
-                    <h3 class="text-lg font-semibold text-secondary-800 mb-4">{% trans "Mettre à jour le statut" %}</h3>
-                    <form method="post" action=""> {# Add action URL if different #}
-                        {% csrf_token %}
-                        <div class="mb-4">
-                            <label for="status" class="block text-sm font-medium text-secondary-700 mb-1">{% trans "Nouveau statut" %}</label>
-                            <select name="status" id="status" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 bg-white">
-                                {% for value, label in status_choices %}
-                                    <option value="{{ value }}" {% if problem.status == value %}selected{% endif %}>{{ label }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        {# Optional: Add a comment field #}
-                        <div class="mb-4">
-                            <label for="comment" class="block text-sm font-medium text-secondary-700 mb-1">{% trans "Commentaire (Optionnel)" %}</label>
-                            <textarea name="comment" id="comment" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"></textarea>
-                        </div>
-                        <button type="submit" class="w-full px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition duration-150 ease-in-out">
-                            <i class="fas fa-save mr-2"></i> {% trans "Enregistrer" %}
-                        </button>
-                    </form>
-                </div>
-
-                <!-- Status History Card -->
-                <div class="bg-white shadow rounded-lg p-6 detail-card" style="animation-delay: 0.3s;">
-                    <h3 class="text-lg font-semibold text-secondary-800 mb-4">{% trans "Historique des statuts" %}</h3>
-                    {% if status_logs %}
-                        <div class="timeline">
-                            {% for log in status_logs %}
-                            <div class="timeline-item">
-                                <div class="timeline-marker"></div>
-                                <div class="ml-4">
-                                    <p class="text-sm font-semibold text-secondary-900">
-                                        {% trans "Statut changé en" %} {{ log.get_new_status_display }}
-                                    </p>
-                                    <p class="text-xs text-secondary-500">
-                                        {{ log.changed_at|date:"d/m/Y H:i" }}
-                                        {% if log.changed_by %}
-                                            {% trans "par" %} {{ log.changed_by.get_full_name|default:log.changed_by.username }}
-                                        {% else %}
-                                            {% trans "par Système" %}
-                                        {% endif %}
-                                    </p>
-                                    {# Add comment display if available #}
-                                    {# {% if log.comment %}<p class="text-sm text-secondary-700 mt-1">{{ log.comment }}</p>{% endif %} #}
-                                </div>
-                            </div>
-                            {% endfor %}
-                            <!-- Initial status -->
-                             <div class="timeline-item">
-                                <div class="timeline-marker"></div>
-                                <div class="ml-4">
-                                    <p class="text-sm font-semibold text-secondary-900">
-                                        {% trans "Problème signalé" %}
-                                    </p>
-                                    <p class="text-xs text-secondary-500">
-                                        {{ problem.created_at|date:"d/m/Y H:i" }} {% trans "par" %} {{ problem.citizen.full_name }}
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    {% else %}
-                        <p class="text-sm text-secondary-600">{% trans "Aucun historique de statut disponible." %}</p>
-                    {% endif %}
-                </div>
+            
+            <div class="flex items-center space-x-3">
+                <button @click="printProblem()" class="btn-secondary flex items-center space-x-2">
+                    <i class="fas fa-print"></i>
+                    <span>{% trans "Imprimer" %}</span>
+                </button>
+                <button @click="exportProblem()" class="btn-secondary flex items-center space-x-2">
+                    <i class="fas fa-download"></i>
+                    <span>{% trans "Exporter" %}</span>
+                </button>
             </div>
         </div>
     </div>
+    
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- Left Column: Details & Map -->
+        <div class="lg:col-span-2 space-y-8">
+            <!-- Problem Details Card -->
+            <div class="card p-8 detail-card">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-2xl font-bold text-gray-900 flex items-center">
+                        <i class="fas fa-info-circle text-blue-500 mr-3"></i>
+                        {% trans "Informations détaillées" %}
+                    </h2>
+                </div>
+
+                <div class="detail-grid">
+                    <div class="detail-item">
+                        <p class="detail-label">{% trans "Description" %}</p>
+                        <p class="detail-value">{{ problem.description }}</p>
+                    </div>
+                    <div class="detail-item">
+                        <p class="detail-label">{% trans "Catégorie" %}</p>
+                        <p class="detail-value flex items-center">
+                            <i class="fas fa-tag text-blue-500 mr-2"></i>
+                            {{ problem.category.name|default:"N/A" }}
+                        </p>
+                    </div>
+                    <div class="detail-item">
+                        <p class="detail-label">{% trans "Adresse signalée" %}</p>
+                        <p class="detail-value flex items-center">
+                            <i class="fas fa-map-marker-alt text-red-500 mr-2"></i>
+                            {{ problem.location|default:"N/A" }}
+                        </p>
+                    </div>
+                    <div class="detail-item">
+                        <p class="detail-label">{% trans "Municipalité" %}</p>
+                        <p class="detail-value flex items-center">
+                            <i class="fas fa-building text-green-500 mr-2"></i>
+                            {{ problem.municipality.name }}
+                        </p>
+                    </div>
+                    <div class="detail-item">
+                        <p class="detail-label">{% trans "Signalé par" %}</p>
+                        <p class="detail-value flex items-center">
+                            <i class="fas fa-user text-purple-500 mr-2"></i>
+                            {{ problem.citizen.full_name }} ({{ problem.citizen.user.phone_number }})
+                        </p>
+                    </div>
+                    <div class="detail-item">
+                        <p class="detail-label">{% trans "Signalé le" %}</p>
+                        <p class="detail-value flex items-center">
+                            <i class="fas fa-calendar text-blue-500 mr-2"></i>
+                            {{ problem.created_at|date:"d/m/Y H:i" }}
+                        </p>
+                    </div>
+                    <div class="detail-item">
+                        <p class="detail-label">{% trans "Dernière mise à jour" %}</p>
+                        <p class="detail-value flex items-center">
+                            <i class="fas fa-clock text-orange-500 mr-2"></i>
+                            {{ problem.updated_at|date:"d/m/Y H:i" }}
+                        </p>
+                    </div>
+                    <div class="detail-item">
+                        <p class="detail-label">{% trans "Coordonnées" %}</p>
+                        <p class="detail-value flex items-center">
+                            <i class="fas fa-crosshairs text-indigo-500 mr-2"></i>
+                            Lat: {{ problem.latitude|default:"N/A" }}, Lon: {{ problem.longitude|default:"N/A" }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Evidence/Attachments -->
+            {% if problem.photo or problem.video or problem.voice_record or problem.document %}
+            <div class="card p-8 detail-card" style="animation-delay: 0.1s;">
+                <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center">
+                    <i class="fas fa-paperclip text-blue-500 mr-3"></i>
+                    {% trans "Pièces jointes" %}
+                </h2>
+                
+                <div class="evidence-grid">
+                    {% if problem.photo %}
+                    <div class="evidence-item" @click="openMediaModal('{{ problem.photo.url }}', 'image')">
+                        <img src="{{ problem.photo.url }}" alt="Photo" class="w-full h-40 object-cover rounded-xl mb-4">
+                        <div class="flex items-center space-x-3">
+                            <i class="fas fa-image text-blue-500 text-xl"></i>
+                            <span class="text-lg font-semibold text-gray-900">{% trans "Photo" %}</span>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if problem.video %}
+                    <div class="evidence-item" @click="openMediaModal('{{ problem.video.url }}', 'video')">
+                        <div class="icon-placeholder">
+                            <i class="fas fa-play-circle text-blue-500"></i>
+                            <span class="text-sm font-medium text-gray-600 mt-2">{% trans "Cliquer pour lire" %}</span>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <i class="fas fa-video text-blue-500 text-xl"></i>
+                            <span class="text-lg font-semibold text-gray-900">{% trans "Vidéo" %}</span>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if problem.voice_record %}
+                    <div class="evidence-item" @click="openMediaModal('{{ problem.voice_record.url }}', 'audio')">
+                        <div class="icon-placeholder">
+                            <i class="fas fa-microphone-alt text-green-500"></i>
+                            <span class="text-sm font-medium text-gray-600 mt-2">{% trans "Cliquer pour écouter" %}</span>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <i class="fas fa-microphone text-green-500 text-xl"></i>
+                            <span class="text-lg font-semibold text-gray-900">{% trans "Enregistrement vocal" %}</span>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if problem.document %}
+                    <div class="evidence-item" @click="openMediaModal('{{ problem.document.url }}', 'document')">
+                        <div class="icon-placeholder">
+                            <i class="fas fa-file-alt text-purple-500"></i>
+                            <span class="text-sm font-medium text-gray-600 mt-2">{% trans "Cliquer pour ouvrir" %}</span>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <i class="fas fa-file text-purple-500 text-xl"></i>
+                            <span class="text-lg font-semibold text-gray-900">{% trans "Document" %}</span>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Map Card -->
+            <div class="card p-8 detail-card" style="animation-delay: 0.2s;">
+                <h3 class="text-2xl font-bold text-gray-900 mb-6 flex items-center">
+                    <i class="fas fa-map-marked-alt text-red-500 mr-3"></i>
+                    {% trans "Localisation" %}
+                </h3>
+                <div id="problem-map"></div>
+            </div>
+        </div>
+
+        <!-- Right Column: Status Update & History -->
+        <div class="lg:col-span-1 space-y-8">
+            <!-- Status Update Card -->
+            <div class="card p-8 detail-card" style="animation-delay: 0.3s;">
+                <h3 class="text-xl font-bold text-gray-900 mb-6 flex items-center">
+                    <i class="fas fa-edit text-blue-500 mr-3"></i>
+                    {% trans "Mettre à jour le statut" %}
+                </h3>
+                <form method="post" action="" class="space-y-6">
+                    {% csrf_token %}
+                    <div>
+                        <label for="status" class="block text-sm font-bold text-gray-700 mb-3">{% trans "Nouveau statut" %}</label>
+                        <select name="status" id="status" class="form-input w-full" required>
+                            {% for value, label in status_choices %}
+                                <option value="{{ value }}" {% if problem.status == value %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label for="comment" class="block text-sm font-bold text-gray-700 mb-3">{% trans "Commentaire (Optionnel)" %}</label>
+                        <textarea name="comment" id="comment" rows="4" class="form-input w-full" placeholder="{% trans 'Ajoutez un commentaire sur cette mise à jour...' %}"></textarea>
+                    </div>
+                    <button type="submit" class="btn-primary w-full">
+                        <i class="fas fa-save mr-2"></i> {% trans "Enregistrer" %}
+                    </button>
+                </form>
+            </div>
+
+            <!-- Status History Card -->
+            <div class="card p-8 detail-card" style="animation-delay: 0.4s;">
+                <h3 class="text-xl font-bold text-gray-900 mb-6 flex items-center">
+                    <i class="fas fa-history text-green-500 mr-3"></i>
+                    {% trans "Historique des statuts" %}
+                </h3>
+                {% if status_logs %}
+                    <div class="timeline">
+                        {% for log in status_logs %}
+                        <div class="timeline-item">
+                            <div class="timeline-marker"></div>
+                            <div>
+                                <p class="text-lg font-bold text-gray-900 mb-2">
+                                    {% trans "Statut changé en" %} 
+                                    <span class="text-blue-600">{{ log.get_new_status_display }}</span>
+                                </p>
+                                <p class="text-sm text-gray-600 mb-2 flex items-center">
+                                    <i class="fas fa-calendar-alt mr-2"></i>
+                                    {{ log.changed_at|date:"d/m/Y H:i" }}
+                                    {% if log.changed_by %}
+                                        {% trans "par" %} <span class="font-semibold ml-1">{{ log.changed_by.get_full_name|default:log.changed_by.username }}</span>
+                                    {% else %}
+                                        {% trans "par" %} <span class="font-semibold ml-1">Système</span>
+                                    {% endif %}
+                                </p>
+                                {% if log.comment %}
+                                <div class="bg-gray-50 rounded-lg p-3 mt-3">
+                                    <p class="text-sm text-gray-700 italic">{{ log.comment }}</p>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                        <!-- Initial status -->
+                        <div class="timeline-item">
+                            <div class="timeline-marker"></div>
+                            <div>
+                                <p class="text-lg font-bold text-gray-900 mb-2">
+                                    <i class="fas fa-flag-checkered text-green-500 mr-2"></i>
+                                    {% trans "Problème signalé" %}
+                                </p>
+                                <p class="text-sm text-gray-600 flex items-center">
+                                    <i class="fas fa-calendar-alt mr-2"></i>
+                                    {{ problem.created_at|date:"d/m/Y H:i" }} {% trans "par" %} 
+                                    <span class="font-semibold ml-1">{{ problem.citizen.full_name }}</span>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="text-center py-8">
+                        <i class="fas fa-history text-gray-300 text-4xl mb-4"></i>
+                        <p class="text-gray-600">{% trans "Aucun historique de statut disponible." %}</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Enhanced Media Modal -->
+    <div id="mediaModal" class="modal-overlay" @click="closeMediaModal()">
+        <div class="modal-container max-w-5xl w-full p-8" @click.stop>
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-2xl font-bold text-gray-900 flex items-center">
+                    <i class="fas fa-eye text-blue-500 mr-3"></i>
+                    {% trans "Aperçu du média" %}
+                </h3>
+                <button @click="closeMediaModal()" class="bg-red-500 hover:bg-red-600 text-white rounded-full w-12 h-12 flex items-center justify-center transition-all duration-300 hover:scale-110">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <div class="text-center bg-gray-50 rounded-xl p-6" id="mediaContent">
+                <!-- Media content will be inserted here -->
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_scripts %}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
 <script>
+function problemDetail() {
+    return {
+        // Fixed print function
+        printProblem() {
+            // Hide buttons and other non-printable elements
+            const buttons = document.querySelectorAll('.btn-primary, .btn-secondary');
+            buttons.forEach(btn => btn.style.display = 'none');
+            
+            // Print the page
+            window.print();
+            
+            // Restore buttons after printing
+            setTimeout(() => {
+                buttons.forEach(btn => btn.style.display = '');
+            }, 1000);
+        },
+        
+        // Fixed export function
+        exportProblem() {
+            // Create a simple text export
+            const problemData = {
+                id: '{{ problem.id }}',
+                description: '{{ problem.description|escapejs }}',
+                location: '{{ problem.location|default:"N/A"|escapejs }}',
+                status: '{{ problem.get_status_display|escapejs }}',
+                category: '{{ problem.category.name|default:"N/A"|escapejs }}',
+                citizen: '{{ problem.citizen.full_name|escapejs }}',
+                created_at: '{{ problem.created_at|date:"d/m/Y H:i" }}',
+                municipality: '{{ problem.municipality.name|escapejs }}'
+            };
+            
+            // Create downloadable content
+            const content = `RAPPORT DE PROBLÈME
+===================
+
+ID: ${problemData.id}
+Description: ${problemData.description}
+Localisation: ${problemData.location}
+Statut: ${problemData.status}
+Catégorie: ${problemData.category}
+Signalé par: ${problemData.citizen}
+Date: ${problemData.created_at}
+Municipalité: ${problemData.municipality}
+
+Généré le: ${new Date().toLocaleString('fr-FR')}`;
+
+            // Create and download file
+            const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `probleme_${problemData.id}_${new Date().toISOString().split('T')[0]}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+            
+            // Show success message
+            alert('{% trans "Export réussi! Le fichier a été téléchargé." %}');
+        }
+    }
+}
+
+// Fixed Modal Functions with enhanced audio support
+function openMediaModal(url, type) {
+    const modal = document.getElementById('mediaModal');
+    const content = document.getElementById('mediaContent');
+    
+    // Clear previous content
+    content.innerHTML = '';
+    
+    // Add new content based on type
+    if (type === 'image') {
+        content.innerHTML = `<img src="${url}" alt="Image" class="max-w-full max-h-96 mx-auto rounded-xl shadow-lg">`;
+    } else if (type === 'video') {
+        content.innerHTML = `<video src="${url}" controls class="max-w-full max-h-96 mx-auto rounded-xl shadow-lg" preload="metadata"></video>`;
+    } else if (type === 'audio') {
+        content.innerHTML = `
+            <div class="audio-player max-w-md mx-auto">
+                <i class="fas fa-music text-6xl text-green-500 mb-4"></i>
+                <h4 class="text-lg font-semibold text-gray-900 mb-4">{% trans "Enregistrement vocal" %}</h4>
+                <audio id="audioPlayer" src="${url}" controls class="w-full" preload="metadata">
+                    {% trans "Votre navigateur ne supporte pas la lecture audio." %}
+                </audio>
+                <div class="audio-controls">
+                    <button onclick="playPauseAudio()" id="playPauseBtn">
+                        <i class="fas fa-play" id="playPauseIcon"></i>
+                    </button>
+                    <button onclick="stopAudio()">
+                        <i class="fas fa-stop"></i>
+                    </button>
+                    <button onclick="downloadAudio('${url}')">
+                        <i class="fas fa-download"></i>
+                    </button>
+                </div>
+            </div>`;
+    } else if (type === 'document') {
+        content.innerHTML = `
+            <div class="bg-white rounded-xl p-8 max-w-md mx-auto">
+                <i class="fas fa-file-alt text-6xl text-purple-500 mb-4"></i>
+                <p class="text-gray-700 mb-4">{% trans "Cliquez pour ouvrir le document:" %}</p>
+                <a href="${url}" target="_blank" class="btn-primary inline-flex items-center">
+                    <i class="fas fa-external-link-alt mr-2"></i> {% trans "Ouvrir le document" %}
+                </a>
+            </div>`;
+    }
+    
+    // Show modal
+    modal.classList.add('show');
+    modal.style.display = 'flex';
+}
+
+function closeMediaModal() {
+    const modal = document.getElementById('mediaModal');
+    const audioPlayer = document.getElementById('audioPlayer');
+    
+    // Stop audio if playing
+    if (audioPlayer) {
+        audioPlayer.pause();
+        audioPlayer.currentTime = 0;
+    }
+    
+    modal.classList.remove('show');
+    modal.style.display = 'none';
+}
+
+// Enhanced audio controls
+function playPauseAudio() {
+    const audio = document.getElementById('audioPlayer');
+    const icon = document.getElementById('playPauseIcon');
+    
+    if (audio.paused) {
+        audio.play();
+        icon.className = 'fas fa-pause';
+    } else {
+        audio.pause();
+        icon.className = 'fas fa-play';
+    }
+}
+
+function stopAudio() {
+    const audio = document.getElementById('audioPlayer');
+    const icon = document.getElementById('playPauseIcon');
+    
+    audio.pause();
+    audio.currentTime = 0;
+    icon.className = 'fas fa-play';
+}
+
+function downloadAudio(url) {
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `enregistrement_vocal_${new Date().getTime()}.mp3`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+}
+
 document.addEventListener('DOMContentLoaded', function() {
+    // Initialize Alpine.js data
+    Alpine.data('problemDetail', problemDetail);
+    
+    // Modal event listeners
+    const modal = document.getElementById('mediaModal');
+    if (modal) {
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                closeMediaModal();
+            }
+        });
+        
+        // Close modal with Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && modal.classList.contains('show')) {
+                closeMediaModal();
+            }
+        });
+    }
+    
+    // Enhanced Map initialization
     const mapElement = document.getElementById('problem-map');
     const latStr = "{{ problem.latitude|default:'' }}";
     const lonStr = "{{ problem.longitude|default:'' }}";
@@ -254,15 +1110,12 @@ document.addEventListener('DOMContentLoaded', function() {
     let lat = null;
     let lon = null;
 
-    // Try parsing coordinates, handle potential errors and convert commas to periods
     try {
         if (latStr) {
-            // Replace commas with periods before parsing
             const normalizedLatStr = latStr.replace(',', '.');
             lat = parseFloat(normalizedLatStr);
         }
         if (lonStr) {
-            // Replace commas with periods before parsing
             const normalizedLonStr = lonStr.replace(',', '.');
             lon = parseFloat(normalizedLonStr);
         }
@@ -270,18 +1123,25 @@ document.addEventListener('DOMContentLoaded', function() {
         console.error("Error parsing coordinates:", e);
     }
 
-    // Enhanced validation for coordinates
     const isValidCoords = typeof lat === 'number' && !isNaN(lat) && 
                           typeof lon === 'number' && !isNaN(lon) &&
                           lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180;
 
     function displayMapError(message) {
         mapElement.innerHTML = 
-            `<div class="map-error-message">${message}</div>`;
+            `<div class="map-error-message">
+                <i class="fas fa-map-marked-alt"></i>
+                <div>${message}</div>
+                <button onclick="retryMapLoad()" class="btn-secondary mt-4">
+                    <i class="fas fa-redo mr-2"></i>{% trans "Réessayer" %}
+                </button>
+            </div>`;
     }
 
-    // Debug coordinates to console (you can remove this after fixing)
-    console.log("Parsed coordinates:", { lat, lon, isValid: isValidCoords });
+    // Global function for retry
+    window.retryMapLoad = function() {
+        location.reload();
+    };
 
     if (!mapboxToken) {
         console.error("Mapbox token is missing!");
@@ -291,60 +1151,125 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (mapElement && isValidCoords) {
         try {
-            // Create map centered on the coordinates
-            const map = L.map(mapElement).setView([lat, lon], 15);
+            // Initialize map with better error handling
+            const map = L.map(mapElement, {
+                center: [lat, lon],
+                zoom: 15,
+                zoomControl: true,
+                scrollWheelZoom: true,
+                doubleClickZoom: true,
+                dragging: true
+            });
+
             let tileLayer = null;
             let tileErrorCount = 0;
             const MAX_TILE_ERRORS = 5;
 
-            // Add Mapbox Streets tile layer
+            // Primary tile layer (Mapbox)
             tileLayer = L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token={accessToken}', {
                 attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
                 maxZoom: 18,
                 id: 'mapbox/streets-v11',
                 tileSize: 512,
                 zoomOffset: -1,
-                accessToken: mapboxToken
+                accessToken: mapboxToken,
+                errorTileUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='
+            });
+
+            // Fallback to OpenStreetMap if Mapbox fails
+            const fallbackTileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                maxZoom: 18
             });
 
             tileLayer.on('tileerror', function(event) {
                 tileErrorCount++;
                 console.warn(`Leaflet tileerror event (${tileErrorCount}/${MAX_TILE_ERRORS}):`, event.tile.src);
+                
                 if (tileErrorCount >= MAX_TILE_ERRORS) {
+                    console.log('Switching to fallback tile layer...');
                     map.removeLayer(tileLayer);
-                    displayMapError("{% trans 'Impossible de charger les tuiles de la carte. Vérifiez votre connexion réseau ou la validité du token Mapbox.' %}");
+                    fallbackTileLayer.addTo(map);
                 }
             });
 
             tileLayer.addTo(map);
 
-            // Add marker at the precise location
-            const marker = L.marker([lat, lon]).addTo(map)
-                .bindPopup(`<b>{% trans "Problème signalé ici" %}</b><br>{{ problem.description|truncatechars:50|escapejs }}`);
-            
-            // Add a small circle to show the exact point - helpful for debugging
-            L.circle([lat, lon], {
-                color: 'red',
-                fillColor: '#f03',
-                fillOpacity: 0.2,
-                radius: 50  // 50 meters radius
-            }).addTo(map);
-
-            // Add event listener to show coordinates on map click (for debugging)
-            map.on('click', function(e) {
-                console.log("Clicked coordinates:", e.latlng.lat, e.latlng.lng);
-                L.popup()
-                    .setLatLng(e.latlng)
-                    .setContent(`Lat: ${e.latlng.lat.toFixed(6)}<br>Lon: ${e.latlng.lng.toFixed(6)}`)
-                    .openOn(map);
+            // Enhanced custom marker
+            const customIcon = L.divIcon({
+                html: `
+                    <div style="
+                        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); 
+                        width: 40px; 
+                        height: 40px; 
+                        border-radius: 50%; 
+                        border: 4px solid white; 
+                        box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4); 
+                        display: flex; 
+                        align-items: center; 
+                        justify-content: center;
+                        animation: pulse 2s infinite;
+                    ">
+                        <i class="fas fa-exclamation text-white text-lg"></i>
+                    </div>`,
+                className: 'custom-marker',
+                iconSize: [40, 40],
+                iconAnchor: [20, 20]
             });
 
+            const marker = L.marker([lat, lon], {icon: customIcon}).addTo(map);
+            
+            // Enhanced popup
+            const popupContent = `
+                <div style="padding: 1rem; min-width: 250px; font-family: system-ui, -apple-system, sans-serif;">
+                    <h4 style="margin: 0 0 0.75rem 0; color: #1f2937; font-weight: bold; font-size: 1.1rem;">
+                        <i class="fas fa-map-marker-alt" style="color: #ef4444; margin-right: 0.5rem;"></i>
+                        {% trans "Emplacement du problème" %}
+                    </h4>
+                    <p style="margin: 0 0 0.5rem 0; color: #6b7280; font-size: 0.9rem;">
+                        <strong>{% trans "Adresse:" %}</strong><br>
+                        {% if problem.location %}{{ problem.location }}{% else %}{% trans "Non spécifiée" %}{% endif %}
+                    </p>
+                    <p style="margin: 0 0 0.5rem 0; color: #6b7280; font-size: 0.9rem;">
+                        <strong>{% trans "Coordonnées:" %}</strong><br>
+                        ${lat.toFixed(6)}, ${lon.toFixed(6)}
+                    </p>
+                    <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid #e5e7eb;">
+                        <button onclick="openDirections(${lat}, ${lon})" style="
+                            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+                            color: white;
+                            border: none;
+                            padding: 0.5rem 1rem;
+                            border-radius: 0.5rem;
+                            font-size: 0.875rem;
+                            cursor: pointer;
+                            transition: all 0.3s ease;
+                        " onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                            <i class="fas fa-directions" style="margin-right: 0.5rem;"></i>
+                            {% trans "Itinéraire" %}
+                        </button>
+                    </div>
+                </div>`;
+
+            marker.bindPopup(popupContent).openPopup();
+
+            // Add map controls
+            L.control.scale().addTo(map);
+
+            // Global function for directions
+            window.openDirections = function(lat, lon) {
+                const url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`;
+                window.open(url, '_blank');
+            };
+
+            console.log('Map initialized successfully');
+
         } catch (e) {
-            console.error("Error initializing Leaflet map:", e);
-            displayMapError("{% trans 'Erreur lors de linitialisation de la carte.' %}");
+            console.error("Error initializing map:", e);
+            displayMapError('{% trans "Erreur lors du chargement de la carte." %}');
         }
     } else if (mapElement) {
-        displayMapError("{% trans 'Coordonnées non disponibles ou invalides pour afficher la carte.' %}");
+        displayMapError('{% trans "Coordonnées de localisation non valides ou manquantes." %}');
     }
 });
 </script>
