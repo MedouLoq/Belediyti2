@@ -27,8 +27,8 @@ urlpatterns = [
     path('reports/', views.report_dashboard, name='report_dashboard'),
     path('reports/generate/', views.generate_report, name='generate_report'),
     # --- ADD THESE NEW URLS FOR THE CHATBOT ---
-    path('chatbot/', views.chatbot_page, name='chatbot_page'),
-    path('api/chatbot/', views.chatbot_api_view, name='chatbot_api'),
+        path('chatbot/', views.chatbot_page, name='chatbot_page'),
+    path('api/chatbot/', views.ChatbotAPIView.as_view(), name='chatbot_api'),
 
 ]
 

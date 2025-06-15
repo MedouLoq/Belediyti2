@@ -4,13 +4,6 @@ from django.contrib.auth import get_user_model
 
 User = get_user_model()
 
-class UserSerializer(serializers.ModelSerializer):
-    full_name = serializers.CharField(source='citizen_profile.full_name', read_only=True) # Access via citizen_profile relationship
-
-    class Meta:
-        model = User
-        fields = ['id', 'username', 'full_name']  # Include full_name
-
 # Citoyen/serializers.py (Example - adjust based on StatusLog fields)
 from rest_framework import serializers
 from .models import StatusLog

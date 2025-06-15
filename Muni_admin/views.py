@@ -1444,6 +1444,7 @@ def _generate_excel_report(report_data):
         from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
         from openpyxl.chart import BarChart, PieChart, LineChart, Reference
         from openpyxl.utils.dataframe import dataframe_to_rows
+        from openpyxl.cell.cell import MergedCell
     except ImportError:
         return JsonResponse({'error': 'Excel generation not available'}, status=500)
     
@@ -1461,6 +1462,32 @@ def _generate_excel_report(report_data):
     normal_font = Font(size=10)
     border = Border(left=Side(style='thin'), right=Side(style='thin'), 
                    top=Side(style='thin'), bottom=Side(style='thin'))
+    
+    def auto_adjust_columns(worksheet):
+        """Helper function to auto-adjust column widths while handling merged cells"""
+        for column_cells in worksheet.columns:
+            max_length = 0
+            column_letter = None
+            
+            for cell in column_cells:
+                # Skip merged cells
+                if isinstance(cell, MergedCell):
+                    continue
+                    
+                # Get column letter from first non-merged cell
+                if column_letter is None:
+                    column_letter = cell.column_letter
+                
+                try:
+                    if cell.value and len(str(cell.value)) > max_length:
+                        max_length = len(str(cell.value))
+                except:
+                    pass
+            
+            # Set column width if we found a valid column letter
+            if column_letter:
+                adjusted_width = min(max_length + 2, 50)
+                worksheet.column_dimensions[column_letter].width = adjusted_width
     
     # Summary sheet
     ws_summary = wb.create_sheet("Résumé Exécutif")
@@ -1513,18 +1540,8 @@ def _generate_excel_report(report_data):
                 cell.font = normal_font
             cell.border = border
     
-    # Auto-adjust column widths
-    for column in ws_summary.columns:
-        max_length = 0
-        column_letter = column[0].column_letter
-        for cell in column:
-            try:
-                if len(str(cell.value)) > max_length:
-                    max_length = len(str(cell.value))
-            except:
-                pass
-        adjusted_width = min(max_length + 2, 50)
-        ws_summary.column_dimensions[column_letter].width = adjusted_width
+    # Auto-adjust column widths for summary sheet
+    auto_adjust_columns(ws_summary)
     
     # Problems sheet
     if 'problems' in report_data:
@@ -1609,18 +1626,8 @@ def _generate_excel_report(report_data):
                 cell.font = normal_font
                 cell.border = border
         
-        # Auto-adjust column widths
-        for column in ws_problems.columns:
-            max_length = 0
-            column_letter = column[0].column_letter
-            for cell in column:
-                try:
-                    if len(str(cell.value)) > max_length:
-                        max_length = len(str(cell.value))
-                except:
-                    pass
-            adjusted_width = min(max_length + 2, 50)
-            ws_problems.column_dimensions[column_letter].width = adjusted_width
+        # Auto-adjust column widths for problems sheet
+        auto_adjust_columns(ws_problems)
     
     # Complaints sheet
     if 'complaints' in report_data:
@@ -1682,18 +1689,8 @@ def _generate_excel_report(report_data):
                 cell.font = normal_font
                 cell.border = border
         
-        # Auto-adjust column widths
-        for column in ws_complaints.columns:
-            max_length = 0
-            column_letter = column[0].column_letter
-            for cell in column:
-                try:
-                    if len(str(cell.value)) > max_length:
-                        max_length = len(str(cell.value))
-                except:
-                    pass
-            adjusted_width = min(max_length + 2, 50)
-            ws_complaints.column_dimensions[column_letter].width = adjusted_width
+        # Auto-adjust column widths for complaints sheet
+        auto_adjust_columns(ws_complaints)
     
     # Time Series sheet
     if report_data['time_series']['dates']:
@@ -1734,18 +1731,8 @@ def _generate_excel_report(report_data):
                 cell.font = normal_font
                 cell.border = border
         
-        # Auto-adjust column widths
-        for column in ws_time.columns:
-            max_length = 0
-            column_letter = column[0].column_letter
-            for cell in column:
-                try:
-                    if len(str(cell.value)) > max_length:
-                        max_length = len(str(cell.value))
-                except:
-                    pass
-            adjusted_width = min(max_length + 2, 20)
-            ws_time.column_dimensions[column_letter].width = adjusted_width
+        # Auto-adjust column widths for time series sheet
+        auto_adjust_columns(ws_time)
     
     # Save to BytesIO
     excel_buffer = BytesIO()
@@ -1762,8 +1749,6 @@ def _generate_excel_report(report_data):
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
     
     return response
-
-
 
 # Complaint Management Views
 
@@ -2137,48 +2122,170 @@ def _export_items_to_excel(items, item_type):
 
 
 # muni_admin/views.py
-# ... keep all your existing imports and views ...
+# muni_admin/views.py
+# Add these imports to your existing views.py file
 
-# --- Add chatbot-related imports ---
 import json
+import logging
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from .chatbot_logic import get_chatbot_response # Import our new function
+from django.views.decorators.http import require_http_methods
+from django.contrib.auth.decorators import login_required
+from django.core.serializers.json import DjangoJSONEncoder
+from django.utils.decorators import method_decorator
+from django.views import View
+from django.shortcuts import render
+from django.utils import timezone
+from django.middleware.csrf import get_token
+from .chatbot_logic import get_chatbot_response, get_quick_stats, suggest_chatbot_questions, detect_language
+
+logger = logging.getLogger(__name__)
 
 @login_required
 def chatbot_page(request):
     """Renders the HTML page for the chatbot interface."""
     context = {
-        'navName': 'chatbot', # For navigation highlighting
+        'navName': 'chatbot',
+        'municipality_id': request.user.admin_profile.municipality.id if hasattr(request.user, 'admin_profile') and request.user.admin_profile.municipality else None,
+        'quick_stats': get_quick_stats(request.user.admin_profile.municipality.id) if hasattr(request.user, 'admin_profile') and request.user.admin_profile.municipality else None,
+        'suggested_questions': suggest_chatbot_questions('fr'),  # Default to French, can be made dynamic
+        'csrf_token': get_token(request)  # Add CSRF token to context
     }
     return render(request, 'muni_admin/chatbot.html', context)
 
+@method_decorator(csrf_exempt, name='dispatch')  # Exempt CSRF for API
+@method_decorator(login_required, name='dispatch')
+class ChatbotAPIView(View):
+    """
+    API endpoint for chatbot interactions with proper error handling and security
+    """
+    
+    def post(self, request):
+        try:
+            # Parse request data
+            data = json.loads(request.body)
+            user_message = data.get('message', '').strip()
+            
+            if not user_message:
+                return JsonResponse({
+                    'error': 'Message cannot be empty',
+                    'success': False
+                }, status=400)
+            
+            # Get user's municipality
+            if not hasattr(request.user, 'admin_profile') or not request.user.admin_profile.municipality:
+                return JsonResponse({
+                    'error': 'User not associated with a municipality',
+                    'success': False
+                }, status=403)
+            
+            municipality_id = request.user.admin_profile.municipality.id
+            
+            # Log the interaction
+            logger.info(f"Chatbot interaction - User: {request.user.username}, Municipality: {municipality_id}, Message: {user_message}")
+            
+            # Get chatbot response
+            bot_response = get_chatbot_response(user_message, municipality_id)
+            
+            # Detect language for suggestions
+            user_language = detect_language(user_message)
+            suggested_questions = suggest_chatbot_questions('fr' if user_language == 'fr' else 'en')
+            
+            return JsonResponse({
+                'response': bot_response,
+                'success': True,
+                'suggested_questions': suggested_questions,
+                'timestamp': timezone.now().isoformat()
+            })
+            
+        except json.JSONDecodeError:
+            return JsonResponse({
+                'error': 'Invalid JSON data',
+                'success': False
+            }, status=400)
+        
+        except Exception as e:
+            logger.error(f"Chatbot API error: {e}", exc_info=True)
+            return JsonResponse({
+                'error': 'Internal server error',
+                'success': False
+            }, status=500)
+    
+    def get(self, request):
+        """Get chatbot status and suggestions"""
+        try:
+            if not hasattr(request.user, 'admin_profile') or not request.user.admin_profile.municipality:
+                return JsonResponse({
+                    'error': 'User not associated with a municipality',
+                    'success': False
+                }, status=403)
+            
+            municipality_id = request.user.admin_profile.municipality.id
+            quick_stats = get_quick_stats(municipality_id)
+            
+            return JsonResponse({
+                'success': True,
+                'quick_stats': quick_stats,
+                'suggested_questions': {
+                    'fr': suggest_chatbot_questions('fr'),
+                    'en': suggest_chatbot_questions('en')
+                },
+                'municipality_id': municipality_id
+            })
+            
+        except Exception as e:
+            logger.error(f"Chatbot status error: {e}", exc_info=True)
+            return JsonResponse({
+                'error': 'Internal server error',
+                'success': False
+            }, status=500)
 
+# Alternative function-based view (if you prefer)
 @login_required
-@csrf_exempt # Use CSRF exempt for API views called by JavaScript
+@csrf_exempt  # Exempt CSRF for API endpoint
+@require_http_methods(["POST"])
 def chatbot_api_view(request):
-    """Handles the AJAX request from the chatbot frontend."""
-    if request.method != 'POST':
-        return JsonResponse({'error': 'POST method required.'}, status=405)
-
+    """
+    Function-based API endpoint for chatbot interactions
+    """
     try:
         data = json.loads(request.body)
-        user_input = data.get("query", "").strip()
-
-        if not user_input:
-            return JsonResponse({"error": "Query cannot be empty."}, status=400)
+        user_message = data.get('message', '').strip()
         
-        # CRITICAL: Get the admin's municipality ID for security
+        if not user_message:
+            return JsonResponse({
+                'error': 'Message is required',
+                'success': False
+            }, status=400)
+        
+        # Security check - ensure user has admin profile and municipality
+        if not hasattr(request.user, 'admin_profile') or not request.user.admin_profile.municipality:
+            return JsonResponse({
+                'error': 'Unauthorized - No municipality access',
+                'success': False
+            }, status=403)
+        
         municipality_id = request.user.admin_profile.municipality.id
-        if not municipality_id:
-            return JsonResponse({"error": "Admin not associated with a municipality."}, status=403)
-
-        # Call our adapted chatbot logic function
-        bot_response_text = get_chatbot_response(user_input, municipality_id)
         
-        return JsonResponse({"response": bot_response_text})
-
+        # Get chatbot response
+        bot_response = get_chatbot_response(user_message, municipality_id)
+        
+        return JsonResponse({
+            'response': bot_response,
+            'success': True,
+            'timestamp': timezone.now().isoformat()
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'error': 'Invalid JSON format',
+            'success': False
+        }, status=400)
+    
     except Exception as e:
-        # You should add proper logging here
-        print(f"Error in chatbot_api_view: {e}")
-        return JsonResponse({"error": "An internal server error occurred."}, status=500)
+        logger.error(f"Chatbot API error: {e}", exc_info=True)
+        return JsonResponse({
+            'error': 'Server error occurred',
+            'success': False
+        }, status=500)
+
