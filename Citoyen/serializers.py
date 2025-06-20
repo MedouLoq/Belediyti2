@@ -196,3 +196,56 @@ class CitizenProfileUpdateSerializer(serializers.ModelSerializer):
         instance.save()
         return instance
 
+# --- NEW: Complaint Detail Serializer ---
+class ComplaintDetailSerializer(serializers.ModelSerializer):
+    citizen = CitizenSerializer(read_only=True)
+    municipality = MunicipalitySerializer(read_only=True)
+
+    photo_url = serializers.SerializerMethodField()
+    video_url = serializers.SerializerMethodField()
+    voice_record_url = serializers.SerializerMethodField()
+    evidence_url = serializers.SerializerMethodField()
+
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
+
+    class Meta:
+        model = Complaint
+        fields = [
+            "id",
+            "subject",
+            "description",
+            "status",
+            "status_display",
+            "created_at",
+            "updated_at",
+            "comment",
+            "citizen",
+            "municipality",
+            "photo_url",
+            "video_url",
+            "voice_record_url",
+            "evidence_url",
+        ]
+        read_only_fields = fields
+
+    def _get_absolute_url(self, field):
+        request = self.context.get("request")
+        if field and hasattr(field, "url"):
+            try:
+                return request.build_absolute_uri(field.url)
+            except Exception as e:
+                print(f"Error building absolute URI for {field.name}: {e}")
+                return None
+        return None
+
+    def get_photo_url(self, obj):
+        return self._get_absolute_url(obj.photo)
+
+    def get_video_url(self, obj):
+        return self._get_absolute_url(obj.video)
+
+    def get_voice_record_url(self, obj):
+        return self._get_absolute_url(obj.voice_record)
+
+    def get_evidence_url(self, obj):
+        return self._get_absolute_url(obj.evidence)

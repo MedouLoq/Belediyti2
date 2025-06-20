@@ -53,6 +53,7 @@ urlpatterns = [
     path("api/dashboard/activity/", views.recent_activity_api, name="recent_activity_api"),
     # Problems API
     path("api/problems/", views.problem_list_api, name="problem_list_api"),
+    path("api/problems/", views.problem_list_api, name="problem_list_api"),
     path("api/problems/<uuid:pk>/", views.problem_detail_api, name="problem_detail_api"),
     path("api/problems/report/", views.report_problem_api, name="report_problem_api"),
     path("api/categories/", views.category_list_api, name="category_list_api"),
@@ -63,7 +64,11 @@ urlpatterns = [
     # Verification API
     path("api/send-code/", views.SendVerificationCodeView.as_view(), name="send_code"),
     path("api/verify-code/", views.VerifyCodeView.as_view(), name="verify_code"),
+path("api/complaints/", views.complaint_list_api, name="complaint_list_api"),
+    path("api/complaints/<uuid:pk>/", views.complaint_detail_api, name="complaint_detail_api"),
+    path("api/complaints/submit/", views.submit_complaint_api, name="submit_complaint_api"),
 
+    # Def
     # Default path redirect
     path("", lambda request: redirect("login" if not request.user.is_authenticated else "redirect_user"), name="home_redirect"), 
 ]

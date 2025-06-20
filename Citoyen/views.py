@@ -696,7 +696,7 @@ def problem_list_api(request):
         logger.error(f"Error fetching problems: {e}", exc_info=True)
         return Response({'error': str(e)}, status=500)
 
-from .serializers import ProblemDetailSerializer # 
+from .serializers import ProblemDetailSerializer ,ComplaintDetailSerializer
 import logging
 
 logger = logging.getLogger(__name__)
@@ -819,6 +819,155 @@ def report_problem_api(request):
         logger.error(f"Error reporting problem: {e}", exc_info=True)
         return Response({"error": f"An unexpected error occurred: {str(e)}"}, status=500)
 
+# --- NEW: Complaints API ---
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def complaint_list_api(request):
+    """
+    API endpoint to list all complaints for the authenticated citizen.
+    """
+    try:
+        citizen = request.user.citizen_profile
+        complaints = Complaint.objects.filter(citizen=citizen).order_by('-created_at')
+
+        serialized_complaints = []
+        for complaint in complaints:
+            complaint_data = {
+                'id': str(complaint.id),
+                'subject': complaint.subject,
+                'description': complaint.description,
+                'status': complaint.status,
+                'created_at': complaint.created_at.isoformat(),
+                'updated_at': complaint.updated_at.isoformat() if complaint.updated_at else None,
+                'photo_url': request.build_absolute_uri(complaint.photo.url) if complaint.photo else None,
+                'video_url': request.build_absolute_uri(complaint.video.url) if complaint.video else None,
+                'voice_record_url': request.build_absolute_uri(complaint.voice_record.url) if complaint.voice_record else None,
+                'evidence_url': request.build_absolute_uri(complaint.evidence.url) if complaint.evidence else None,
+            }
+
+            if complaint.municipality:
+                complaint_data['municipality'] = {
+                    'id': str(complaint.municipality.id),
+                    'name': complaint.municipality.name,
+                }
+
+            serialized_complaints.append(complaint_data)
+
+        return Response(serialized_complaints)
+    except Citizen.DoesNotExist:
+        logger.warning(f"User {request.user.id} ({request.user.username}) does not have a citizen profile.")
+        return Response({"detail": "Profil citoyen non trouvé pour cet utilisateur."}, status=status.HTTP_403_FORBIDDEN)
+    except AttributeError:
+        logger.warning(f"User {request.user.id} ({request.user.username}) is not a citizen type or lacks citizen_profile attribute.")
+        return Response({"detail": "Accès réservé aux citoyens."}, status=status.HTTP_403_FORBIDDEN)
+    except Exception as e:
+        logger.error(f"Error fetching complaints: {e}", exc_info=True)
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def complaint_detail_api(request, pk):
+    """
+    API endpoint to retrieve details of a specific complaint.
+    Requires authentication. Ensures the user is the citizen who submitted it.
+    """
+    try:
+        try:
+            requesting_citizen = request.user.citizen_profile
+        except Citizen.DoesNotExist:
+             logger.warning(f"User {request.user.id} ({request.user.username}) does not have a citizen profile.")
+             return Response({"detail": "Profil citoyen non trouvé pour cet utilisateur."}, status=status.HTTP_403_FORBIDDEN)
+        except AttributeError:
+             logger.warning(f"User {request.user.id} ({request.user.username}) is not a citizen type or lacks citizen_profile attribute.")
+             return Response({"detail": "Accès réservé aux citoyens."}, status=status.HTTP_403_FORBIDDEN)
+
+        complaint = get_object_or_404(
+            Complaint.objects.select_related("citizen__user", "municipality"),
+            pk=pk,
+            citizen=requesting_citizen
+        )
+
+    except Complaint.DoesNotExist:
+        logger.warning(f"Complaint with pk={pk} not found for citizen {requesting_citizen.id}")
+        return Response({"detail": "Réclamation non trouvée ou accès non autorisé."}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        logger.error(f"Error fetching complaint detail for pk={pk}, user {request.user.id}: {e}", exc_info=True)
+        return Response({"detail": "Une erreur interne est survenue."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    serializer = ComplaintDetailSerializer(complaint, context={"request": request})
+    return Response(serializer.data)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def submit_complaint_api(request):
+    """
+    API endpoint to allow authenticated citizens to submit new complaints.
+    Handles file uploads for photo, video, voice_record, and evidence.
+    """
+    try:
+        citizen = request.user.citizen_profile
+
+        required_fields = ["subject", "description"]
+        for field in required_fields:
+            if field not in request.data:
+                return Response({"error": f"Missing required field: {field}"}, status=status.HTTP_400_BAD_REQUEST)
+
+        complaint = Complaint(
+            citizen=citizen,
+            subject=request.data["subject"],
+            description=request.data["description"],
+        )
+
+        # Set municipality (optional, or from citizen's profile)
+        if "municipality" in request.data and request.data["municipality"]:
+            try:
+                municipality_id = request.data["municipality"]
+                complaint.municipality = get_object_or_404(Municipality, id=municipality_id)
+            except Exception as e:
+                logger.warning(f"Could not set municipality for complaint: {e}")
+                complaint.municipality = None
+        else:
+            # If municipality is not provided in the request, use the citizen's registered municipality
+            complaint.municipality = citizen.municipality
+
+        # Handle individual file uploads
+        if "photo" in request.FILES:
+            complaint.photo = request.FILES["photo"]
+        if "video" in request.FILES:
+            complaint.video = request.FILES["video"]
+        if "voice_record" in request.FILES:
+            complaint.voice_record = request.FILES["voice_record"]
+        if "evidence" in request.FILES:
+            complaint.evidence = request.FILES["evidence"]
+
+        # Save the complaint object with all fields assigned
+        complaint.save()
+
+        # Prepare response
+        return Response({
+            "id": str(complaint.id),
+            "subject": complaint.subject,
+            "status": complaint.status,
+            "created_at": complaint.created_at.isoformat(),
+            "message": "Complaint submitted successfully."
+            # Optionally include URLs to uploaded files if needed by the client
+            # "photo_url": complaint.photo.url if complaint.photo else None,
+            # "video_url": complaint.video.url if complaint.video else None,
+            # ... etc.
+        }, status=status.HTTP_201_CREATED)
+
+    except Citizen.DoesNotExist:
+        logger.warning(f"User {request.user.id} ({request.user.username}) does not have a citizen profile.")
+        return Response({"detail": "Profil citoyen non trouvé pour cet utilisateur."}, status=status.HTTP_403_FORBIDDEN)
+    except AttributeError:
+        logger.warning(f"User {request.user.id} ({request.user.username}) is not a citizen type or lacks citizen_profile attribute.")
+        return Response({"detail": "Accès réservé aux citoyens."}, status=status.HTTP_403_FORBIDDEN)
+    except Exception as e:
+        logger.error(f"Error submitting complaint: {e}", exc_info=True)
+        return Response({"error": f"An unexpected error occurred: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -1195,3 +1344,5 @@ class VerifyCodeView(APIView):
             return Response({
                 "error": "Failed to verify code."
             }, status=500)
+
+

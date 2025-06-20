@@ -15,8 +15,8 @@ import os # Added for MEDIA_ROOT
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-CHINGUISOFT_VALIDATION_KEY = os.getenv('CHINGUISOFT_VALIDATION_KEY', '')
-CHINGUISOFT_VALIDATION_TOKEN = os.getenv('CHINGUISOFT_VALIDATION_TOKEN', '')
+CHINGUISOFT_VALIDATION_KEY = 'ciSPuRWNvl4HUyUP'
+CHINGUISOFT_VALIDATION_TOKEN = '5r3mCILnkw2ht85UUGcSm3e7VedjcYIb'
 
 
 # Quick-start development settings - unsuitable for production

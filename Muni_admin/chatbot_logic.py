@@ -142,6 +142,7 @@ def create_sql_query_chain(db, llm, municipality_id):
         | llm
         | StrOutputParser()
     )
+
 def create_full_chain(db, sql_query_chain, response_llm):
     """
     Creates the full chain with improved response generation and language handling.
