@@ -38,6 +38,7 @@ urlpatterns = [
     
     # Profile (Web Views - keep if needed)
     path("profile/edit/", views.edit_profile, name="edit_profile"),
+    path("api/municipalities/", views.municipality_list_api, name="municipality_list_api"),
 
     # --- API Endpoints --- 
     path("api/login/", views.login_api, name="login_api"),
@@ -46,14 +47,12 @@ urlpatterns = [
     path("api/profile/", views.user_profile_api, name="user_profile_api"),
     # Profile Update API (GET, PUT, PATCH) - Add this line
     path("api/profile/update/", views.citizen_profile_update_api, name="citizen_profile_update_api"),
-    # Municipalities API
-    path("api/municipalities/", views.municipality_list_api, name="municipality_list_api"),
-    # Dashboard API
+    # Municipalities API  # Dashboard API
     path("api/dashboard/stats/", views.dashboard_stats_api, name="dashboard_stats_api"),
     path("api/dashboard/activity/", views.recent_activity_api, name="recent_activity_api"),
     # Problems API
     path("api/problems/", views.problem_list_api, name="problem_list_api"),
-    path("api/problems/", views.problem_list_api, name="problem_list_api"),
+    
     path("api/problems/<uuid:pk>/", views.problem_detail_api, name="problem_detail_api"),
     path("api/problems/report/", views.report_problem_api, name="report_problem_api"),
     path("api/categories/", views.category_list_api, name="category_list_api"),

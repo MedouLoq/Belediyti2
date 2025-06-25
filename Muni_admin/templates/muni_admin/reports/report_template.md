@@ -1,13 +1,19 @@
-# Markdown Report Template for Enhanced Reports
+# Markdown Report Template with Static Logo
 
-## RAPPORT MUNICIPAL
-### Municipalité de {{ municipality_name }}
+<div align="center">
+
+![Logo Municipal](/Citoyen/static/municipal_logo.jpg)
+
+# RAPPORT MUNICIPAL
+## Municipalité de {{ municipality_name }}
 
 ---
 
 **Période d'analyse:** {{ period_text }}  
 **Généré le:** {{ generated_date }}  
 **Généré par:** Système de gestion municipale Belediyti
+
+</div>
 
 ---
 
@@ -205,6 +211,11 @@ Pour toute question concernant ce rapport, veuillez contacter l'administration m
 
 ---
 
+<div align="center">
+
+![Logo Municipal](/Citoyen/static/municipal_logo.jpg)
+
 *Rapport généré automatiquement par le système de gestion municipale Belediyti*  
 *{{ generated_date }}*
 
+</div>

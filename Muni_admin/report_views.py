@@ -234,7 +234,7 @@ def _generate_time_series_data(problems_qs, complaints_qs, date_from, date_to):
     }
 
 def _generate_pdf_report(request, report_data, include_charts, include_maps):
-    """Generate PDF report using markdown and manus-md-to-pdf"""
+    
     
     # Render markdown content
     markdown_content = render_to_string('muni_admin/reports/report_template.md', {
