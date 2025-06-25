@@ -301,7 +301,7 @@
                         <img class="h-8 w-auto" style="width: 800px; height: 100px;" src="{% static 'belediyeti.png' %}" alt="Belediyti Logo">
                     </div>
                         <div>
-                            <h1 class="font-bold text-xl text-secondary-900">Belediyti</h1>
+                           
                             <p class="text-xs text-secondary-500">SuperAdmin Portal</p>
                         </div>
                     </div>
@@ -349,13 +349,16 @@
                             </a>
                         </li>
                         
+                        <li class="px-2 py-1 stagger-4 opacity-0 animate-slide-in-right">
+                                    <a href="{% url 'logout' %}" class="flex items-center px-4 py-2.5 text-secondary-700 rounded-lg hover:bg-primary-50 hover:text-primary-700 group {% if request.resolver_match.url_name == 'citizen_users' %}bg-primary-50 text-primary-700 nav-active{% endif %}" style="color: #ef4444;">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span class="nav-text">{% trans "Déconnexion" %}</span></a>
+                         </li>
                      
 
         
                     </ul>
-                        <a href="{% url 'logout' %}" class="nav-item" style="color: #ef4444;">
-                    <i class="fas fa-sign-out-alt"></i>
-                    <span class="nav-text">{% trans "Déconnexion" %}</span>
+                 
                 </a>
                 </nav>
                 
@@ -422,76 +425,25 @@
                         
                         <div class="flex items-center space-x-4">
                             <!-- Search -->
-                            <div class="relative hidden sm:block">
-                                <input type="text" placeholder="Rechercher..." class="w-64 bg-gray-100 rounded-lg py-2 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:bg-white">
-                                <i class="fas fa-search absolute left-3 top-3 text-secondary-400"></i>
-                            </div>
-                            
+                       
                             <!-- Notifications -->
                             <div class="relative">
                                 <button class="p-2 rounded-full hover:bg-gray-100 focus:outline-none relative" id="notifications-button">
-                                    <i class="fas fa-bell text-secondary-600"></i>
-                                    <span class="absolute top-0 right-0 h-4 w-4 bg-danger-500 rounded-full text-xs text-white flex items-center justify-center pulse-badge">3</span>
+                                    <i class="fas fa-bell text-secondary-600" style="color: white;"></i>
                                 </button>
                                 
-                                <!-- Notifications Dropdown -->
-                                <div class="notifications-dropdown hidden absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg py-2 z-50">
-                                    <div class="px-4 py-2 border-b border-gray-100 flex justify-between items-center">
-                                        <h3 class="font-semibold text-secondary-900">Notifications</h3>
-                                        <a href="#" class="text-xs text-primary-600 hover:text-primary-800">Tout marquer comme lu</a>
-                                    </div>
-                                    <div class="max-h-80 overflow-y-auto">
-                                        <a href="#" class="block px-4 py-3 hover:bg-gray-50 border-l-4 border-primary-500">
-                                            <div class="flex items-start">
-                                                <div class="flex-shrink-0 bg-primary-100 rounded-full p-2">
-                                                    <i class="fas fa-user-plus text-primary-600"></i>
-                                                </div>
-                                                <div class="ml-3">
-                                                    <p class="text-sm font-medium text-secondary-900">Nouvel administrateur créé</p>
-                                                    <p class="text-xs text-secondary-500">Il y a 5 minutes</p>
-                                                </div>
-                                            </div>
-                                        </a>
-                                        <a href="#" class="block px-4 py-3 hover:bg-gray-50">
-                                            <div class="flex items-start">
-                                                <div class="flex-shrink-0 bg-warning-100 rounded-full p-2">
-                                                    <i class="fas fa-triangle-exclamation text-warning-600"></i>
-                                                </div>
-                                                <div class="ml-3">
-                                                    <p class="text-sm font-medium text-secondary-900">5 nouveaux problèmes signalés</p>
-                                                    <p class="text-xs text-secondary-500">Il y a 2 heures</p>
-                                                </div>
-                                            </div>
-                                        </a>
-                                        <a href="#" class="block px-4 py-3 hover:bg-gray-50">
-                                            <div class="flex items-start">
-                                                <div class="flex-shrink-0 bg-success-100 rounded-full p-2">
-                                                    <i class="fas fa-check text-success-600"></i>
-                                                </div>
-                                                <div class="ml-3">
-                                                    <p class="text-sm font-medium text-secondary-900">Mise à jour système réussie</p>
-                                                    <p class="text-xs text-secondary-500">Hier</p>
-                                                </div>
-                                            </div>
-                                        </a>
-                                    </div>
-                                    <div class="px-4 py-2 border-t border-gray-100">
-                                        <a href="" class="text-center block text-sm text-primary-600 hover:text-primary-800">
-                                            Voir toutes les notifications
-                                        </a>
-                                    </div>
-                                </div>
+                              
                             </div>
                             
                             <!-- Help -->
                             <button class="p-2 rounded-full hover:bg-gray-100 focus:outline-none" id="help-button">
-                                <i class="fas fa-question-circle text-secondary-600"></i>
+                                <i class="fas fa-question-circle text-secondary-600" style="color: white;"></i>
                             </button>
 
                             <!-- Theme Toggle -->
                             <button class="p-2 rounded-full hover:bg-gray-100 focus:outline-none" id="theme-toggle">
-                                <i class="fas fa-moon text-secondary-600 dark:hidden"></i>
-                                <i class="fas fa-sun text-secondary-600 hidden dark:block"></i>
+                                <i class="fas fa-moon text-secondary-600 dark:hidden" style="color: white;"></i>
+                                <i class="fas fa-sun text-secondary-600 hidden dark:block" style="color: white;"></i>
                             </button>
                         </div>
                     </div>
