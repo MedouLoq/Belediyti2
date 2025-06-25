@@ -57,7 +57,7 @@ def superadmin_home(request):
     recent_citizens = User.objects.filter(user_type='CITIZEN').order_by('-date_joined')[:5]
     for citizen_user in recent_citizens:
         recent_activities.append({
-            'text': f"New citizen registered: {citizen_user.username}",
+            'text': f"Nouveau citoyen enregistre: {citizen_user.username}",
             'timestamp': citizen_user.date_joined
         })
 
@@ -65,7 +65,7 @@ def superadmin_home(request):
     recent_problems = Problem.objects.order_by('-created_at')[:5]
     for problem in recent_problems:
         recent_activities.append({
-            'text': f"New problem report: {problem.description[:50]}...",
+            'text': f"Nouveau rapport de problème: {problem.description[:50]}...",
             'timestamp': problem.created_at
         })
 
