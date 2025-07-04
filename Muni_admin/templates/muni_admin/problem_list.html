@@ -529,10 +529,7 @@
                 </button>
                 
                 <!-- Export -->
-                <button @click="exportProblems()" class="btn-primary flex items-center space-x-2">
-                    <i class="fas fa-download"></i>
-                    <span>Exporter</span>
-                </button>
+               
             </div>
         </div>
         
@@ -560,27 +557,7 @@
             </div>
             
             <!-- Quick Filters -->
-            <div class="flex items-center space-x-3 flex-wrap">
-                <span class="text-sm font-semibold text-gray-700">Filtres rapides:</span>
-                <button 
-                    @click="toggleQuickFilter('pending')" 
-                    :class="quickFilters.includes('pending') ? 'filter-chip active' : 'filter-chip'"
-                >
-                    <i class="fas fa-clock mr-2"></i>En attente
-                </button>
-                <button 
-                    @click="toggleQuickFilter('urgent')" 
-                    :class="quickFilters.includes('urgent') ? 'filter-chip active' : 'filter-chip'"
-                >
-                    <i class="fas fa-exclamation-triangle mr-2"></i>Urgent
-                </button>
-                <button 
-                    @click="toggleQuickFilter('today')" 
-                    :class="quickFilters.includes('today') ? 'filter-chip active' : 'filter-chip'"
-                >
-                    <i class="fas fa-calendar-day mr-2"></i>Aujourd'hui
-                </button>
-            </div>
+         
         </div>
     </div>
     
@@ -620,15 +597,7 @@
                 </select>
             </div>
             
-            <div>
-                <label class="block text-sm font-semibold text-gray-700 mb-3">Date de création</label>
-                <input type="date" name="date_from" value="{{ request.GET.date_from }}" class="form-input w-full">
-            </div>
-            
-            <div>
-                <label class="block text-sm font-semibold text-gray-700 mb-3">Date de fin</label>
-                <input type="date" name="date_to" value="{{ request.GET.date_to }}" class="form-input w-full">
-            </div>
+          
             
             <div class="md:col-span-2 lg:col-span-4 flex items-center space-x-4 pt-4">
                 <button type="submit" class="btn-primary">
@@ -652,13 +621,7 @@
         </div>
         
         <div class="flex items-center space-x-3">
-            <span class="text-sm font-medium text-gray-600">Trier par:</span>
-            <select x-model="sortBy" @change="applySort()" class="form-input w-auto">
-                <option value="-created_at">Plus récent</option>
-                <option value="created_at">Plus ancien</option>
-                <option value="status">Statut</option>
-                <option value="category">Catégorie</option>
-            </select>
+          
         </div>
     </div>
     

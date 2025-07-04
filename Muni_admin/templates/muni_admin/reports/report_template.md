@@ -2,7 +2,8 @@
 
 <div align="center">
 
-![Logo Municipal](/Citoyen/static/municipal_logo.jpg)
+{% load static %}
+![Logo Municipal]({% static 'municipal_logo.jpg' %})
 
 # RAPPORT MUNICIPAL
 ## Municipalité de {{ municipality_name }}
@@ -213,7 +214,8 @@ Pour toute question concernant ce rapport, veuillez contacter l'administration m
 
 <div align="center">
 
-![Logo Municipal](/Citoyen/static/municipal_logo.jpg)
+
+
 
 *Rapport généré automatiquement par le système de gestion municipale Belediyti*  
 *{{ generated_date }}*

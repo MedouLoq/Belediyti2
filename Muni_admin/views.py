@@ -1173,6 +1173,32 @@ def _generate_enhanced_pdf_report(request, report_data, include_charts, include_
         # Cover Page
         story.append(Spacer(1, 2*inch))
         story.append(Paragraph("RAPPORT MUNICIPAL", title_style))
+        logo_path = None
+        # Try to find the logo in STATIC_ROOT (for production)
+        if settings.STATIC_ROOT:
+            potential_path = os.path.join(settings.STATIC_ROOT, 'municipal_logo.jpg')
+            if os.path.exists(potential_path):
+                logo_path = potential_path
+        from django.contrib.staticfiles.finders import find # Import find for development environments
+        # If not found in STATIC_ROOT, try to find it using Django's staticfiles finders (for development)
+        if not logo_path:
+            logo_path = find('municipal_logo.jpg')
+
+        if logo_path:
+            try:
+                # Adjust width and height as needed
+                logo = Image(logo_path, width=2*inch, height=2*inch) 
+                story.append(logo)
+                story.append(Spacer(1, 0.5*inch)) # Add some space after the logo
+            except Exception as e:
+                # Log the error if the image cannot be loaded
+                print(f"Error loading logo image: {e}")
+                story.append(Paragraph("Logo non disponible", normal_style)) # Placeholder text
+                story.append(Spacer(1, 0.5*inch))
+        else:
+            story.append(Paragraph("Logo non trouvé (chemin: municipal_logo.jpg)", normal_style))
+            story.append(Spacer(1, 0.5*inch))
+        
         story.append(Spacer(1, 0.5*inch))
         story.append(Paragraph(f"Municipalité de {report_data['municipality'].name}", subtitle_style))
         story.append(Spacer(1, 1*inch))
@@ -1406,11 +1432,36 @@ def _generate_enhanced_pdf_report(request, report_data, include_charts, include_
         Les graphiques et analyses présentés dans ce rapport permettent d'identifier les tendances,
         les zones d'amélioration et les succès de la gestion municipale.
         """
+        logo_path = None
+        # Try to find the logo in STATIC_ROOT (for production)
+        if settings.STATIC_ROOT:
+            potential_path = os.path.join(settings.STATIC_ROOT, 'municipal_logo.jpg')
+            if os.path.exists(potential_path):
+                logo_path = potential_path
+        from django.contrib.staticfiles.finders import find # Import find for development environments
+        # If not found in STATIC_ROOT, try to find it using Django's staticfiles finders (for development)
+        if not logo_path:
+            logo_path = find('municipal_logo.jpg')
+
+        if logo_path:
+            try:
+                # Adjust width and height as needed
+                logo = Image(logo_path, width=2*inch, height=2*inch) 
+                story.append(logo)
+                story.append(Spacer(1, 0.5*inch)) # Add some space after the logo
+            except Exception as e:
+                # Log the error if the image cannot be loaded
+                print(f"Error loading logo image: {e}")
+                story.append(Paragraph("Logo non disponible", normal_style)) # Placeholder text
+                story.append(Spacer(1, 0.5*inch))
+        else:
+            story.append(Paragraph("Logo non trouvé (chemin: municipal_logo.jpg)", normal_style))
+            story.append(Spacer(1, 0.5*inch))
+        
         story.append(Paragraph(conclusion_text, normal_style))
         story.append(Spacer(1, 30))
         story.append(Paragraph("Rapport généré automatiquement par le système de gestion municipale Belediyti", 
                               ParagraphStyle('Footer', parent=styles['Italic'], fontSize=9, textColor=colors.HexColor('#7f8c8d'))))
-        
         # Build PDF
         doc.build(story)
         
@@ -1879,17 +1930,51 @@ from Citoyen.models import Citizen
 from Citoyen.models import Citizen
 from django.db.models import Q
 
+from django.shortcuts import render
+from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator
+from django.db.models import Q, Count, Case, When, IntegerField
+
+
+ITEMS_PER_PAGE = 12  # Adjust as needed
+
 @login_required
 def citizen_list(request):
     """List all citizens who have submitted problems in the municipality"""
     user_municipality = request.user.admin_profile.municipality
     
     search_term = request.GET.get('search', '')
+    sort_by = request.GET.get('sort', 'full_name')
     
     # Filter citizens who have submitted problems in this municipality
+    # and annotate with counts for each citizen
     citizens = Citizen.objects.filter(
-        problems__municipality=user_municipality
-    ).distinct()  # Use distinct() to avoid duplicates if citizen has multiple problems
+         Q(problems__municipality=user_municipality) | 
+        Q(complaints__municipality=user_municipality) 
+        
+    ).distinct().annotate(
+        # Count problems for each citizen in this municipality
+        problems_count=Count(
+            'problems',
+            filter=Q(problems__municipality=user_municipality),
+            distinct=True
+        ),
+        # Count complaints for each citizen in this municipality
+        complaints_count=Count(
+            'complaints',
+            filter=Q(complaints__municipality=user_municipality),
+            distinct=True
+        ),
+        # Count resolved problems for each citizen in this municipality
+        resolved_count=Count(
+            'problems',
+            filter=Q(
+                problems__municipality=user_municipality,
+                problems__status='RESOLVED'
+            ),
+            distinct=True
+        )
+    )
     
     if search_term:
         citizens = citizens.filter(
@@ -1899,7 +1984,60 @@ def citizen_list(request):
             Q(address__icontains=search_term)
         )
     
-    citizens = citizens.order_by('full_name').select_related('user', 'municipality')
+    # Apply sorting
+    valid_sort_fields = {
+        'full_name': 'full_name',
+        '-full_name': '-full_name',
+        'user__date_joined': 'user__date_joined',
+        '-user__date_joined': '-user__date_joined',
+        'nni': 'nni',
+        'problems_count': 'problems_count',
+        '-problems_count': '-problems_count',
+        'complaints_count': 'complaints_count',
+        '-complaints_count': '-complaints_count',
+    }
+    
+    if sort_by in valid_sort_fields:
+        citizens = citizens.order_by(valid_sort_fields[sort_by])
+    else:
+        citizens = citizens.order_by('full_name')
+    
+    # Select related to optimize queries
+    citizens = citizens.select_related('user', 'municipality')
+    
+    # Calculate overall statistics for the header cards
+    total_citizens = citizens.count()
+    verified_count = citizens.filter(user__is_verified=True).count() if hasattr(citizens.first().user if citizens.first() else None, 'is_verified') else 0
+    
+    # Calculate total problems and complaints across all citizens
+    total_problems = Problem.objects.filter(
+        municipality=user_municipality,
+        citizen__in=citizens
+    ).count()
+    
+    total_complaints = Complaint.objects.filter(
+        municipality=user_municipality,
+        citizen__in=citizens
+    ).count()
+    
+    # Calculate active reports (assuming pending/in_progress status)
+    active_reports = Problem.objects.filter(
+        municipality=user_municipality,
+        citizen__in=citizens,
+        status__in=['PENDING', 'IN_PROGRESS']
+    ).count()
+    
+    # Calculate new citizens this month
+    from django.utils import timezone
+    from datetime import datetime, timedelta
+    
+    current_month = timezone.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    new_this_month = citizens.filter(
+        user__date_joined__gte=current_month
+    ).count()
+    
+    # Calculate verification percentage
+    verified_percentage = round((verified_count / total_citizens * 100) if total_citizens > 0 else 0, 1)
     
     # Pagination
     paginator = Paginator(citizens, ITEMS_PER_PAGE)
@@ -1910,9 +2048,18 @@ def citizen_list(request):
         'citizens': page_obj,
         'search_term': search_term,
         'navName': 'citizens',
+        # Overall statistics for header cards
+        'verified_count': verified_count,
+        'verified_percentage': verified_percentage,
+        'active_reports': active_reports,
+        'new_this_month': new_this_month,
+        'total_problems': total_problems,
+        'total_complaints': total_complaints,
+        'current_sort': sort_by,
     }
     
     return render(request, 'muni_admin/citizen_list.html', context)
+
 @login_required
 def citizen_detail(request, citizen_id):
     """View detailed information about a citizen and their submissions"""

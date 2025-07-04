@@ -514,21 +514,7 @@
             </div>
         </div>
         
-        <div class="card p-6 hover:shadow-elegant-lg transition-all duration-300 hover:-translate-y-1">
-            <div class="flex items-center">
-                <div class="p-4 bg-gradient-to-br from-green-100 to-green-200 dark:from-green-900/30 dark:to-green-800/30 rounded-xl">
-                    <i class="fas fa-user-check text-green-600 dark:text-green-400 text-2xl"></i>
-                </div>
-                <div class="ml-4">
-                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Vérifiés</p>
-                    <p class="text-3xl font-bold text-gray-900 dark:text-white">{{ verified_count|default:"--" }}</p>
-                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        {{ verified_percentage|default:"--" }}% du total
-                    </p>
-                </div>
-            </div>
-        </div>
-        
+     
         <div class="card p-6 hover:shadow-elegant-lg transition-all duration-300 hover:-translate-y-1">
             <div class="flex items-center">
                 <div class="p-4 bg-gradient-to-br from-yellow-100 to-yellow-200 dark:from-yellow-900/30 dark:to-yellow-800/30 rounded-xl">
@@ -544,20 +530,7 @@
             </div>
         </div>
         
-        <div class="card p-6 hover:shadow-elegant-lg transition-all duration-300 hover:-translate-y-1">
-            <div class="flex items-center">
-                <div class="p-4 bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-900/30 dark:to-blue-800/30 rounded-xl">
-                    <i class="fas fa-calendar-plus text-blue-600 dark:text-blue-400 text-2xl"></i>
-                </div>
-                <div class="ml-4">
-                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Nouveaux ce mois</p>
-                    <p class="text-3xl font-bold text-gray-900 dark:text-white">{{ new_this_month|default:"--" }}</p>
-                    <p class="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                        <i class="fas fa-trend-up mr-1"></i>Croissance
-                    </p>
-                </div>
-            </div>
-        </div>
+       
     </div>
     
     <!-- Enhanced Results Summary -->
@@ -572,16 +545,7 @@
             {% endif %}
         </div>
         
-        <div class="flex items-center space-x-3">
-            <span class="text-sm text-gray-600 dark:text-gray-400">Trier par:</span>
-            <select id="sortSelect" class="form-input w-auto">
-                <option value="full_name">Nom (A-Z)</option>
-                <option value="-full_name">Nom (Z-A)</option>
-                <option value="-user__date_joined">Plus récent</option>
-                <option value="user__date_joined">Plus ancien</option>
-                <option value="nni">NNI</option>
-            </select>
-        </div>
+        
     </div>
     
     <!-- Enhanced Citizens Grid View -->
