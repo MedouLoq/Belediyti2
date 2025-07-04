@@ -691,7 +691,7 @@
                     </div>
                 </div>
                 <button 
-                    @click.stop="quickStatusUpdate('{{ problem.id }}', '{{ problem.status }}')"
+@click="window.location.href='{% url 'Muni_admin:problem_detail' problem.id %}'"
                     class="bg-gradient-to-r from-blue-500 to-purple-500 text-white px-4 py-2 rounded-lg font-semibold text-sm hover:from-blue-600 hover:to-purple-600 transition-all duration-300 transform hover:scale-105"
                 >
                     Mettre à jour

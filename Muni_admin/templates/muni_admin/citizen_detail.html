@@ -1,0 +1,309 @@
+{% extends 'muni_admin/base.html' %}
+{% load static %}
+{% load i18n %}
+
+{% block page_title %}{% trans "Détails du Citoyen" %}{% endblock %}
+{% block page_subtitle %}{% trans "Informations détaillées et historique des soumissions" %}{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+    <!-- Citizen Profile Header -->
+    <div class="card p-8 animate-fade-in">
+        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-6 lg:space-y-0">
+            <div class="flex items-center space-x-6">
+                <!-- Profile Picture -->
+                <div class="relative">
+                    {% if citizen.profile_picture %}
+                        <img src="{{ citizen.profile_picture.url }}" 
+                             alt="{{ citizen.full_name }}"
+                             class="w-24 h-24 rounded-2xl object-cover shadow-elegant border-4 border-white dark:border-secondary-700">
+                    {% else %}
+                        <div class="w-24 h-24 rounded-2xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center text-white text-2xl font-bold shadow-elegant border-4 border-white dark:border-secondary-700">
+                            {{ citizen.full_name|first|upper }}
+                        </div>
+                    {% endif %}
+                    <div class="absolute -bottom-2 -right-2 w-8 h-8 bg-green-500 rounded-full border-4 border-white dark:border-secondary-800 flex items-center justify-center">
+                        <i class="fas fa-user text-white text-xs"></i>
+                    </div>
+                </div>
+
+                <!-- Basic Info -->
+                <div class="space-y-2">
+                    <h2 class="text-3xl font-bold text-secondary-900 dark:text-white font-display">
+                        {{ citizen.full_name }}
+                    </h2>
+                    <div class="flex items-center space-x-4 text-secondary-600 dark:text-secondary-400">
+                        <div class="flex items-center space-x-2">
+                            <i class="fas fa-phone text-primary-500"></i>
+                            <span>{{ citizen.user.phone_number|default:"Non renseigné" }}</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <i class="fas fa-envelope text-primary-500"></i>
+                            <span>{{ citizen.user.email }}</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-4 text-sm text-secondary-500 dark:text-secondary-400">
+                        <div class="flex items-center space-x-2">
+                            <i class="fas fa-calendar-alt"></i>
+                            <span>{% trans "Membre depuis" %} {{ citizen.user.date_joined|date:"F Y" }}</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <i class="fas fa-map-marker-alt"></i>
+                            <span>{{ citizen.municipality.name }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+        
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-fade-in-up">
+        <!-- Total Problems -->
+        <div class="card p-6 hover:shadow-glow-primary transition-all duration-300">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-secondary-600 dark:text-secondary-400">{% trans "Total Problèmes" %}</p>
+                    <p class="text-3xl font-bold text-secondary-900 dark:text-white">{{ total_problems }}</p>
+                </div>
+                <div class="w-12 h-12 bg-orange-100 dark:bg-orange-900/30 rounded-xl flex items-center justify-center">
+                    <i class="fas fa-exclamation-triangle text-orange-600 dark:text-orange-400 text-xl"></i>
+                </div>
+            </div>
+            <div class="mt-4 flex items-center text-sm">
+                {% if total_problems > 0 %}
+                    <span class="text-green-600 dark:text-green-400">
+                        {{ resolved_problems|floatformat:0 }}/{{ total_problems }} résolus
+                    </span>
+                {% else %}
+                    <span class="text-secondary-500 dark:text-secondary-400">Aucun problème signalé</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Total Complaints -->
+        <div class="card p-6 hover:shadow-glow-primary transition-all duration-300">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-secondary-600 dark:text-secondary-400">{% trans "Total Réclamations" %}</p>
+                    <p class="text-3xl font-bold text-secondary-900 dark:text-white">{{ total_complaints }}</p>
+                </div>
+                <div class="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center">
+                    <i class="fas fa-file-signature text-blue-600 dark:text-blue-400 text-xl"></i>
+                </div>
+            </div>
+            <div class="mt-4 flex items-center text-sm">
+                {% if total_complaints > 0 %}
+                    <span class="text-green-600 dark:text-green-400">
+                        {{ resolved_complaints|floatformat:0 }}/{{ total_complaints }} résolues
+                    </span>
+                {% else %}
+                    <span class="text-secondary-500 dark:text-secondary-400">Aucune réclamation</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Resolution Rate -->
+        <div class="card p-6 hover:shadow-glow-primary transition-all duration-300">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-secondary-600 dark:text-secondary-400">{% trans "Taux de Résolution" %}</p>
+                    <p class="text-3xl font-bold text-secondary-900 dark:text-white">
+                        {% if total_problems > 0 or total_complaints > 0 %}
+                            {{ resolved_problems|add:resolved_complaints|floatformat:0 }}/{{ total_problems|add:total_complaints }}
+                        {% else %}
+                            0/0
+                        {% endif %}
+                    </p>
+                </div>
+                <div class="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-xl flex items-center justify-center">
+                    <i class="fas fa-check-circle text-green-600 dark:text-green-400 text-xl"></i>
+                </div>
+            </div>
+            <div class="mt-4 flex items-center text-sm">
+                {% if total_problems > 0 or total_complaints > 0 %}
+                    {% with total_submissions=total_problems|add:total_complaints resolved_submissions=resolved_problems|add:resolved_complaints %}
+                        {% widthratio resolved_submissions total_submissions 100 as resolution_rate %}
+                        <div class="flex items-center space-x-2">
+                            <div class="w-16 h-2 bg-secondary-200 dark:bg-secondary-700 rounded-full">
+                                <div class="h-full bg-green-500 rounded-full" style="width: {{ resolution_rate }}%"></div>
+                            </div>
+                            <span class="text-green-600 dark:text-green-400">{{ resolution_rate }}%</span>
+                        </div>
+                    {% endwith %}
+                {% else %}
+                    <span class="text-secondary-500 dark:text-secondary-400">Aucune donnée</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Activity Status -->
+        <div class="card p-6 hover:shadow-glow-primary transition-all duration-300">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-secondary-600 dark:text-secondary-400">{% trans "Statut d'Activité" %}</p>
+                    <p class="text-lg font-bold text-secondary-900 dark:text-white">
+                        {% if citizen.user.is_active %}
+                            <span class="text-green-600 dark:text-green-400">{% trans "Actif" %}</span>
+                        {% else %}
+                            <span class="text-red-600 dark:text-red-400">{% trans "Inactif" %}</span>
+                        {% endif %}
+                    </p>
+                </div>
+                <div class="w-12 h-12 bg-{% if citizen.user.is_active %}green{% else %}red{% endif %}-100 dark:bg-{% if citizen.user.is_active %}green{% else %}red{% endif %}-900/30 rounded-xl flex items-center justify-center">
+                    <i class="fas fa-{% if citizen.user.is_active %}user-check{% else %}user-times{% endif %} text-{% if citizen.user.is_active %}green{% else %}red{% endif %}-600 dark:text-{% if citizen.user.is_active %}green{% else %}red{% endif %}-400 text-xl"></i>
+                </div>
+            </div>
+            <div class="mt-4 flex items-center text-sm">
+                <span class="text-secondary-500 dark:text-secondary-400">
+                    {% trans "Dernière connexion" %}: {{ citizen.user.last_login|date:"d/m/Y"|default:"Jamais" }}
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detailed Information -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- Personal Information -->
+        <div class="card p-6 animate-slide-in-left">
+            <h3 class="text-xl font-bold text-secondary-900 dark:text-white mb-6 flex items-center">
+                <i class="fas fa-user-circle text-primary-500 mr-3"></i>
+                {% trans "Informations Personnelles" %}
+            </h3>
+            
+            <div class="space-y-4">
+                <div class="flex items-center justify-between py-3 border-b border-secondary-200/50 dark:border-secondary-700/50">
+                    <span class="text-sm font-medium text-secondary-600 dark:text-secondary-400">{% trans "NNI" %}:</span>
+                    <span class="text-sm text-secondary-900 dark:text-white font-mono">{{ citizen.nni }}</span>
+                </div>
+                
+                <div class="flex items-center justify-between py-3 border-b border-secondary-200/50 dark:border-secondary-700/50">
+                    <span class="text-sm font-medium text-secondary-600 dark:text-secondary-400">{% trans "Adresse" %}:</span>
+                    <span class="text-sm text-secondary-900 dark:text-white">{{ citizen.address|default:"Non renseignée" }}</span>
+                </div>
+                
+                <div class="flex items-center justify-between py-3 border-b border-secondary-200/50 dark:border-secondary-700/50">
+                    <span class="text-sm font-medium text-secondary-600 dark:text-secondary-400">{% trans "Téléphone" %}:</span>
+                    <span class="text-sm text-secondary-900 dark:text-white">{{ citizen.user.phone_number|default:"Non renseigné" }}</span>
+                </div>
+                
+                <div class="flex items-center justify-between py-3 border-b border-secondary-200/50 dark:border-secondary-700/50">
+                    <span class="text-sm font-medium text-secondary-600 dark:text-secondary-400">{% trans "Email" %}:</span>
+                    <span class="text-sm text-secondary-900 dark:text-white">{{ citizen.user.email }}</span>
+                </div>
+                
+                <div class="flex items-center justify-between py-3">
+                    <span class="text-sm font-medium text-secondary-600 dark:text-secondary-400">{% trans "Date d'inscription" %}:</span>
+                    <span class="text-sm text-secondary-900 dark:text-white">{{ citizen.user.date_joined|date:"d/m/Y" }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Problems -->
+        <div class="card p-6 animate-slide-in-right">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-xl font-bold text-secondary-900 dark:text-white flex items-center">
+                    <i class="fas fa-exclamation-triangle text-orange-500 mr-3"></i>
+                    {% trans "Problèmes Récents" %}
+                </h3>
+                {% if total_problems > 10 %}
+                    <a href="#" class="text-sm text-primary-600 dark:text-primary-400 hover:underline">
+                        {% trans "Voir tout" %} ({{ total_problems }})
+                    </a>
+                {% endif %}
+            </div>
+            
+            <div class="space-y-4">
+                {% for problem in problems %}
+                    <div class="p-4 bg-secondary-50 dark:bg-secondary-800/50 rounded-xl border border-secondary-200/50 dark:border-secondary-700/50">
+                        <div class="flex items-center justify-between mb-2">
+                            <h4 class="font-medium text-secondary-900 dark:text-white text-sm">{{ problem.description }}</h4>
+                            <span class="status-badge status-{{ problem.status|lower }}">
+                                {% if problem.status == 'PENDING' %}{% trans "En attente" %}
+                                {% elif problem.status == 'IN_PROGRESS' %}{% trans "En cours" %}
+                                {% elif problem.status == 'RESOLVED' %}{% trans "Résolu" %}
+                                {% else %}{{ problem.status }}{% endif %}
+                            </span>
+                        </div>
+                        <p class="text-xs text-secondary-600 dark:text-secondary-400">
+                            {{ problem.created_at|date:"d/m/Y H:i" }}
+                        </p>
+                    </div>
+                {% empty %}
+                    <div class="text-center py-8">
+                        <i class="fas fa-inbox text-4xl text-secondary-300 dark:text-secondary-600 mb-4"></i>
+                        <p class="text-secondary-500 dark:text-secondary-400">{% trans "Aucun problème signalé" %}</p>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Recent Complaints -->
+        <div class="card p-6 animate-slide-in-right" style="animation-delay: 0.1s">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-xl font-bold text-secondary-900 dark:text-white flex items-center">
+                    <i class="fas fa-file-signature text-blue-500 mr-3"></i>
+                    {% trans "Réclamations Récentes" %}
+                </h3>
+                {% if total_complaints > 10 %}
+                    <a href="#" class="text-sm text-primary-600 dark:text-primary-400 hover:underline">
+                        {% trans "Voir tout" %} ({{ total_complaints }})
+                    </a>
+                {% endif %}
+            </div>
+            
+            <div class="space-y-4">
+                {% for complaint in complaints %}
+                    <div class="p-4 bg-secondary-50 dark:bg-secondary-800/50 rounded-xl border border-secondary-200/50 dark:border-secondary-700/50">
+                        <div class="flex items-center justify-between mb-2">
+                            <h4 class="font-medium text-secondary-900 dark:text-white text-sm">{{ complaint.subject }}</h4>
+                            <span class="status-badge status-{{ complaint.status|lower }}">
+                                {% if complaint.status == 'PENDING' %}{% trans "En attente" %}
+                                {% elif complaint.status == 'IN_PROGRESS' %}{% trans "En cours" %}
+                                {% elif complaint.status == 'RESOLVED' %}{% trans "Résolu" %}
+                                {% else %}{{ complaint.status }}{% endif %}
+                            </span>
+                        </div>
+                        <p class="text-xs text-secondary-600 dark:text-secondary-400">
+                            {{ complaint.created_at|date:"d/m/Y H:i" }}
+                        </p>
+                    </div>
+                {% empty %}
+                    <div class="text-center py-8">
+                        <i class="fas fa-inbox text-4xl text-secondary-300 dark:text-secondary-600 mb-4"></i>
+                        <p class="text-secondary-500 dark:text-secondary-400">{% trans "Aucune réclamation" %}</p>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Action Buttons -->
+    
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Add smooth animations to cards
+    const cards = document.querySelectorAll('.card');
+    cards.forEach((card, index) => {
+        card.style.animationDelay = `${index * 0.1}s`;
+    });
+    
+    // Add hover effects to statistics cards
+    const statCards = document.querySelectorAll('.grid .card');
+    statCards.forEach(card => {
+        card.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-4px) scale(1.02)';
+        });
+        
+        card.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0) scale(1)';
+        });
+    });
+});
+</script>
+{% endblock %}
