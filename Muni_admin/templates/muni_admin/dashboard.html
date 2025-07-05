@@ -413,16 +413,7 @@
                     <p class="text-sm text-secondary-600 dark:text-secondary-400">Évolution des signalements dans le temps</p>
                 </div>
                 <div class="flex space-x-2" x-data="{ activeTab: 'combined' }">
-                    <button @click="activeTab = 'problems'; updateTimeSeriesChart('problems')" 
-                            :class="activeTab === 'problems' ? 'chart-tab active' : 'chart-tab'">
-                        <i class="fas fa-triangle-exclamation mr-2"></i>
-                        Problèmes
-                    </button>
-                    <button @click="activeTab = 'complaints'; updateTimeSeriesChart('complaints')" 
-                            :class="activeTab === 'complaints' ? 'chart-tab active' : 'chart-tab'">
-                        <i class="fas fa-file-signature mr-2"></i>
-                        Réclamations
-                    </button>
+                   
                     <button @click="activeTab = 'combined'; updateTimeSeriesChart('combined')" 
                             :class="activeTab === 'combined' ? 'chart-tab active' : 'chart-tab'">
                         <i class="fas fa-chart-line mr-2"></i>
