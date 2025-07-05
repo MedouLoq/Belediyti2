@@ -58,6 +58,9 @@ def problem_list(request):
     }
 
     return render(request, 'muni_admin/problem_list.html', context)
+
+
+
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
 from django.utils import timezone
